@@ -381,7 +381,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Load Properties
-    let properties = await Property.find(query)
+    const properties = await Property.find(query)
       .populate("localityId", "name")
       .lean();
 

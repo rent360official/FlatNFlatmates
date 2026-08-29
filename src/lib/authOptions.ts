@@ -29,7 +29,7 @@ export const authOptions: NextAuthOptions = {
         const { phone, otp, email, name } = credentials;
 
         const cleanPhone = phone.replace(/\D/g, '');
-        let user = await User.findOne({ phone: cleanPhone });
+        const user = await User.findOne({ phone: cleanPhone });
         if (!user) {
           throw new Error("User record not found. Please request an OTP first.");
         }

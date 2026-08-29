@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IAmenityCache extends Document {
   propertyId: mongoose.Types.ObjectId;
-  amenities: Record<string, number>;
+  amenities: Record<string, number | null>;
   createdAt: Date;
   updatedAt: Date;
 }

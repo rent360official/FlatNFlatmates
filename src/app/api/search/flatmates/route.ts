@@ -328,7 +328,7 @@ export async function GET(req: NextRequest) {
       const user = userMap.get(listing.userId.toString());
       if (!user) continue; // Filtered out by gender/age query
 
-      const prop = listing.propertyId;
+      const prop = listing.propertyId as any;
       const userPrefs = prefsMap.get(user._id.toString());
 
       // 1. Geolocation Locality Filter
