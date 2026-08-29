@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { publishProperty } from "./actions";
-import { 
+import {
   Building, MapPin, Image as ImageIcon, ShieldCheck, Zap, PawPrint,
   ChevronLeft, ChevronRight, Sparkles, Check, CheckCircle2,
   UploadCloud, X, Film, Star, Loader2
@@ -108,7 +108,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
         lat: selected.lat,
         lng: selected.lng,
       }));
-      
+
       // Reactive update to Google Map instance
       if (mapInstanceRef.current && markerInstanceRef.current) {
         const pos = { lat: selected.lat, lng: selected.lng };
@@ -365,13 +365,13 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
   };
 
   const handleAmenityToggle = (name: string) => {
-    setAmenities(prev => 
+    setAmenities(prev =>
       prev.includes(name) ? prev.filter(a => a !== name) : [...prev, name]
     );
   };
 
   const handleRuleToggle = (name: string) => {
-    setHouseRules(prev => 
+    setHouseRules(prev =>
       prev.includes(name) ? prev.filter(r => r !== name) : [...prev, name]
     );
   };
@@ -469,18 +469,16 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           const isDone = idx < step;
           return (
             <div key={name} className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0">
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                isDone 
-                  ? "bg-brand-primary text-white" 
-                  : isActive 
-                    ? "border-2 border-brand-primary text-brand-primaryHover font-semibold" 
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isDone
+                  ? "bg-brand-primary text-white"
+                  : isActive
+                    ? "border-2 border-brand-primary text-brand-primaryHover font-semibold"
                     : "border border-slate-200 text-slate-400"
-              }`}>
+                }`}>
                 {isDone ? <Check className="h-3 w-3" /> : idx}
               </div>
-              <span className={`text-[10px] md:text-xs font-semibold whitespace-nowrap ${
-                isActive ? "text-brand-primary" : isDone ? "text-slate-700" : "text-slate-400"
-              } hidden xs:inline sm:inline`}>
+              <span className={`text-[10px] md:text-xs font-semibold whitespace-nowrap ${isActive ? "text-brand-primary" : isDone ? "text-slate-700" : "text-slate-400"
+                } hidden xs:inline sm:inline`}>
                 {name}
               </span>
             </div>
@@ -502,18 +500,18 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           <div className="space-y-3.5">
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Listing Title</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={basics.title}
                 onChange={e => setBasics({ ...basics, title: e.target.value })}
                 required
-                placeholder="e.g. Spacious 2BHK flat with terrace in Baner" 
+                placeholder="e.g. Spacious 2BHK flat with terrace in Baner"
                 className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
               />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Detailed Description</label>
-              <textarea 
+              <textarea
                 value={basics.description}
                 onChange={e => setBasics({ ...basics, description: e.target.value })}
                 required
@@ -525,7 +523,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Property Type</label>
-                <select 
+                <select
                   value={basics.propertyType}
                   onChange={e => setBasics({ ...basics, propertyType: e.target.value })}
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
@@ -538,7 +536,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">BHK Configuration</label>
-                <select 
+                <select
                   value={basics.bhkConfig}
                   onChange={e => setBasics({ ...basics, bhkConfig: e.target.value })}
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
@@ -554,8 +552,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Floor No.</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={basics.floor}
                   onChange={e => setBasics({ ...basics, floor: parseInt(e.target.value) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
@@ -563,8 +561,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Total Floors</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={basics.totalFloors}
                   onChange={e => setBasics({ ...basics, totalFloors: parseInt(e.target.value) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
@@ -572,8 +570,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Super Area (Sq.Ft.)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={basics.areaSqft}
                   onChange={e => setBasics({ ...basics, areaSqft: parseInt(e.target.value) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
@@ -599,17 +597,17 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">City (Locked)</label>
-                <input 
-                  type="text" 
-                  value="Pune" 
-                  disabled 
+                <input
+                  type="text"
+                  value="Pune"
+                  disabled
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-100 text-slate-400 cursor-not-allowed outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Select Locality Node</label>
-                <select 
-                  value={location.localityId} 
+                <select
+                  value={location.localityId}
                   onChange={handleLocalityChange}
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
                 >
@@ -622,12 +620,12 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
 
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Full Street Address</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={location.addressLine}
                 onChange={e => setLocation({ ...location, addressLine: e.target.value })}
                 required
-                placeholder="e.g. Flat 402, Building C, Highrise Palms, Baner Road" 
+                placeholder="e.g. Flat 402, Building C, Highrise Palms, Baner Road"
                 className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
               />
             </div>
@@ -653,7 +651,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
 
               {/* Google Map Div */}
-              <div 
+              <div
                 ref={mapRef}
                 className="h-48 bg-slate-100 border rounded-lg relative overflow-hidden"
                 style={{ minHeight: "192px" }}
@@ -685,7 +683,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               <ImageIcon className="mr-2 h-4.5 w-4.5 text-brand-primary" />
               Media Gallery & Video Tour
             </h3>
-            <p className="text-[11px] text-slate-400">Upload high-quality images and an optional video tour of your flat to AWS S3.</p>
+            <p className="text-[11px] text-slate-400">Upload high-quality images and an optional video tour of your flat.</p>
           </div>
 
           <div className="space-y-4">
@@ -735,7 +733,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                   {media.images.map((img, idx) => (
                     <div key={idx} className="relative group rounded-xl overflow-hidden border bg-slate-100 shadow-sm aspect-video">
                       <img src={img.url} alt={img.fileName} className="w-full h-full object-cover" />
-                      
+
                       {/* Cover Selection Overlay */}
                       <div className="absolute top-2 left-2 flex items-center space-x-1">
                         {img.isCover ? (
@@ -791,7 +789,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 <Film className="h-3.5 w-3.5 mr-1 text-brand-primary" />
                 Tour Video (Optional)
               </label>
-              
+
               {media.tourVideoUrl ? (
                 <div className="border rounded-xl p-3 bg-brand-primary/10/50 flex items-center justify-between gap-3 animate-in fade-in duration-200">
                   <div className="flex items-center space-x-2 min-w-0">
@@ -854,11 +852,10 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                       key={a}
                       type="button"
                       onClick={() => handleAmenityToggle(a)}
-                      className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${
-                        active 
-                          ? "border-brand-primary bg-brand-primary/10/50 text-brand-primaryHover font-semibold" 
+                      className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${active
+                          ? "border-brand-primary bg-brand-primary/10/50 text-brand-primaryHover font-semibold"
                           : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
+                        }`}
                     >
                       <span>{a.replace('_', ' ').toUpperCase()}</span>
                       {active && <Check className="h-3.5 w-3.5 text-brand-primary" />}
@@ -878,11 +875,10 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                       key={r}
                       type="button"
                       onClick={() => handleRuleToggle(r)}
-                      className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${
-                        active 
-                          ? "border-brand-primary bg-brand-primary/10/50 text-brand-primaryHover font-semibold" 
+                      className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${active
+                          ? "border-brand-primary bg-brand-primary/10/50 text-brand-primaryHover font-semibold"
                           : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
+                        }`}
                     >
                       <span>{r.replace('_', ' ').toUpperCase()}</span>
                       {active && <Check className="h-3.5 w-3.5 text-brand-primary" />}
@@ -996,13 +992,11 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                     <button
                       type="button"
                       onClick={() => setPropertyDetails({ ...propertyDetails, evChargingAvailable: !propertyDetails.evChargingAvailable })}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        propertyDetails.evChargingAvailable ? "bg-brand-primary" : "bg-slate-200"
-                      }`}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${propertyDetails.evChargingAvailable ? "bg-brand-primary" : "bg-slate-200"
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        propertyDetails.evChargingAvailable ? "translate-x-4" : "translate-x-0"
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${propertyDetails.evChargingAvailable ? "translate-x-4" : "translate-x-0"
+                        }`} />
                     </button>
                   </div>
                 </div>
@@ -1052,13 +1046,11 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                     <button
                       type="button"
                       onClick={() => setPropertyDetails({ ...propertyDetails, fiberAvailable: !propertyDetails.fiberAvailable })}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        propertyDetails.fiberAvailable ? "bg-brand-primary" : "bg-slate-200"
-                      }`}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${propertyDetails.fiberAvailable ? "bg-brand-primary" : "bg-slate-200"
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        propertyDetails.fiberAvailable ? "translate-x-4" : "translate-x-0"
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${propertyDetails.fiberAvailable ? "translate-x-4" : "translate-x-0"
+                        }`} />
                     </button>
                   </div>
                   {propertyDetails.fiberAvailable && (
@@ -1091,11 +1083,10 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                         key={s}
                         type="button"
                         onClick={() => handleSafetyToggle(s)}
-                        className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${
-                          active
+                        className={`px-3 py-2 rounded-lg text-xs border text-left transition-all flex items-center justify-between ${active
                             ? "border-brand-primary bg-brand-primary/10/50 text-brand-primaryHover font-semibold"
                             : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                        }`}
+                          }`}
                       >
                         <span>{s}</span>
                         {active && <Check className="h-3.5 w-3.5 text-brand-primary" />}
@@ -1124,8 +1115,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Rent Amount (₹/mo)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={pricing.rentAmount}
                   onChange={e => setPricing({ ...pricing, rentAmount: parseInt(e.target.value) || 0 })}
                   required
@@ -1134,8 +1125,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Deposit Amount (₹)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={pricing.depositAmount}
                   onChange={e => setPricing({ ...pricing, depositAmount: parseInt(e.target.value) || 0 })}
                   required
@@ -1144,8 +1135,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Maintenance (₹/mo)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={pricing.maintenanceAmount}
                   onChange={e => setPricing({ ...pricing, maintenanceAmount: parseInt(e.target.value) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
@@ -1156,7 +1147,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Furnishing Status</label>
-                <select 
+                <select
                   value={pricing.furnishingStatus}
                   onChange={e => setPricing({ ...pricing, furnishingStatus: e.target.value })}
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
@@ -1168,7 +1159,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Preferred Tenant Type</label>
-                <select 
+                <select
                   value={pricing.tenantPreference}
                   onChange={e => setPricing({ ...pricing, tenantPreference: e.target.value })}
                   className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
@@ -1192,14 +1183,12 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 <button
                   type="button"
                   onClick={() => setPricing({ ...pricing, brokerageFlag: !pricing.brokerageFlag })}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    pricing.brokerageFlag ? "bg-brand-primary" : "bg-slate-200"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${pricing.brokerageFlag ? "bg-brand-primary" : "bg-slate-200"
+                    }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      pricing.brokerageFlag ? "translate-x-5" : "translate-x-0"
-                    }`}
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${pricing.brokerageFlag ? "translate-x-5" : "translate-x-0"
+                      }`}
                   />
                 </button>
               </div>
@@ -1207,8 +1196,8 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
               {pricing.brokerageFlag && (
                 <div className="animate-in fade-in duration-200">
                   <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Brokerage Commission Amount (₹)</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={pricing.brokerageAmount}
                     onChange={e => setPricing({ ...pricing, brokerageAmount: parseInt(e.target.value) || 0 })}
                     placeholder="e.g. 10000"

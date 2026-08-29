@@ -28,7 +28,7 @@ const UserSchema: Schema<IUser> = new Schema(
   {
     name: { type: String },
     phone: { type: String, required: true, unique: true },
-    email: { type: String, unique: true, sparse: true },
+    email: { type: String },
     profilePhoto: { type: String },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     age: { type: Number },
