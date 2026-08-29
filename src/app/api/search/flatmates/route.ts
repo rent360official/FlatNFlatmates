@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Locality from "@/models/Locality";

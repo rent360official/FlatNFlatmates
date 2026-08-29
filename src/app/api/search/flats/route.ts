@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import dbConnect from "@/lib/db";
 import Property from "@/models/Property";
 import PointOfInterest from "@/models/PointOfInterest";
