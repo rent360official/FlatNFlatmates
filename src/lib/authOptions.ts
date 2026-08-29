@@ -56,12 +56,22 @@ export const authOptions: NextAuthOptions = {
         if (isVerified) {
           // Sign Up: save profile details if user name is missing
           if (!user.name) {
-            if (!name) {
+            const cleanName = (name === "undefined" || name === "null" || !name) ? "" : name.trim();
+            if (!cleanName) {
               throw new Error("Name is required for registration");
             }
-            user.name = name;
-            if (email) {
-              user.email = email;
+            user.name = cleanName;
+
+            const cleanEmail = (email === "undefined" || email === "null" || !email) ? undefined : email.trim();
+            if (cleanEmail) {
+              // Application-level uniqueness check for email
+              const existingEmailUser = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } });
+              if (existingEmailUser) {
+                throw new Error("This email is already registered to another account.");
+              }
+              user.email = cleanEmail;
+            } else {
+              user.email = undefined;
             }
           }
           

@@ -69,6 +69,10 @@ export async function POST(req: NextRequest) {
     if (isPreExistingUser) {
       // Pre-existing user: Merge Google details into it and delete the temporary Google user.
       if (googleUser.email && !phoneUser.email) {
+        const existingEmailUser = await User.findOne({ email: googleUser.email, _id: { $ne: phoneUser._id } });
+        if (existingEmailUser && existingEmailUser._id.toString() !== googleUser._id.toString()) {
+          return NextResponse.json({ error: "This email is already registered to another account." }, { status: 400 });
+        }
         phoneUser.email = googleUser.email;
       }
       if (googleUser.name && !phoneUser.name) {

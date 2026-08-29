@@ -36,10 +36,18 @@ export async function adminCreateUser(formData: FormData) {
       throw new Error(`User with phone ${phone} already exists`);
     }
 
+    const cleanEmail = (email === "undefined" || email === "null" || !email) ? undefined : email.trim();
+    if (cleanEmail) {
+      const existingEmail = await User.findOne({ email: cleanEmail });
+      if (existingEmail) {
+        throw new Error(`User with email ${cleanEmail} already exists`);
+      }
+    }
+
     const user = await User.create({
       name,
       phone,
-      email,
+      email: cleanEmail,
       role,
       verificationStatus: "verified", // On-behalf users are automatically verified
     });

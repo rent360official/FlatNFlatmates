@@ -21,6 +21,7 @@ export async function updatePersonalInfo(formData: FormData) {
     const sessionUser = await getSessionUser();
     
     const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
     const age = parseInt(formData.get("age") as string);
     const gender = formData.get("gender") as any;
     const profession = formData.get("profession") as string;
@@ -45,8 +46,19 @@ export async function updatePersonalInfo(formData: FormData) {
     if (sleep) vibePreferences.push(`sleep:${sleep}`);
 
     await dbConnect();
+
+    const cleanEmail = (email === "undefined" || email === "null" || !email) ? undefined : email.trim();
+    if (cleanEmail) {
+      // Validate that no other user already has this email
+      const existingEmailUser = await User.findOne({ email: cleanEmail, _id: { $ne: sessionUser.id } });
+      if (existingEmailUser) {
+        throw new Error("This email is already registered to another account.");
+      }
+    }
+
     await User.findByIdAndUpdate(sessionUser.id, {
       name,
+      email: cleanEmail,
       age: isNaN(age) ? undefined : age,
       gender,
       profession,
