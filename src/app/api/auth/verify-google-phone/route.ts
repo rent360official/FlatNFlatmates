@@ -70,32 +70,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Google account session not found in database" }, { status: 404 });
     }
 
-    // Merge Google user details into the target phone-number user document
-    if (googleUser.email && !phoneUser.email) {
-      phoneUser.email = googleUser.email;
-    }
-    if (googleUser.name && !phoneUser.name) {
-      phoneUser.name = googleUser.name;
-    }
-    if (googleUser.profilePhoto && !phoneUser.profilePhoto) {
-      phoneUser.profilePhoto = googleUser.profilePhoto;
-    }
+    // Determine if the target phone number is already verified/active on another account
+    const isPreExistingUser = phoneUser && (phoneUser.verificationStatus === "verified" || phoneUser.email || phoneUser.name);
 
-    phoneUser.verificationStatus = "verified";
+    if (isPreExistingUser) {
+      // Pre-existing user: Merge Google details into it and delete the temporary Google user.
+      if (googleUser.email && !phoneUser.email) {
+        phoneUser.email = googleUser.email;
+      }
+      if (googleUser.name && !phoneUser.name) {
+        phoneUser.name = googleUser.name;
+      }
+      if (googleUser.profilePhoto && !phoneUser.profilePhoto) {
+        phoneUser.profilePhoto = googleUser.profilePhoto;
+      }
 
-    // Secure server-side super admin promotion for target number
-    if (cleanPhone === "8933066862") {
-      phoneUser.role = "super_admin";
+      phoneUser.verificationStatus = "verified";
+
+      // Secure server-side super admin promotion for target number
+      if (cleanPhone === "8933066862") {
+        phoneUser.role = "super_admin";
+      }
+
+      // Delete the temporary Google user first to avoid email unique key constraint violation
+      await User.deleteOne({ _id: googleUser._id });
+      await phoneUser.save();
+    } else {
+      // New phone number: Simply update the Google user directly.
+      googleUser.phone = cleanPhone;
+      googleUser.verificationStatus = "verified";
+
+      // Secure server-side super admin promotion for target number
+      if (cleanPhone === "8933066862") {
+        googleUser.role = "super_admin";
+      }
+
+      await googleUser.save();
+
+      // Clean up the placeholder user created during the send-otp step
+      if (phoneUser && !phoneUser.isNew) {
+        await User.deleteOne({ _id: phoneUser._id });
+      }
     }
-
-    await phoneUser.save();
-
-    // Delete the temporary Google user document to complete the merge
-    await User.deleteOne({ _id: googleUser._id });
 
     return NextResponse.json({ success: true, message: "Phone number verified and account created successfully" });
   } catch (error: any) {
     console.error("Google phone verification error:", error);
-    return NextResponse.json({ error: error.message || "Verification failed" }, { status: 500 });
+    return NextResponse.json({ error: "An unexpected error occurred during phone verification. Please try again later." }, { status: 500 });
   }
 }

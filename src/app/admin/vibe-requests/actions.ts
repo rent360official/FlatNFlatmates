@@ -6,6 +6,7 @@ import dbConnect from "@/lib/db";
 import VibeUpgradeRequest from "@/models/VibeUpgradeRequest";
 import { logAdminAction } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { getFriendlyErrorMessage } from "@/lib/utils";
 
 async function verifyAdminSession() {
   const session = await getServerSession(authOptions);
@@ -61,7 +62,7 @@ export async function verifyAndCompleteVibeRequest(requestId: string, otp: strin
     return { success: true };
 
   } catch (error: any) {
-    return { error: error.message || "Failed to complete request" };
+    return { error: getFriendlyErrorMessage(error, "Failed to complete request") };
   }
 }
 
@@ -98,6 +99,6 @@ export async function releaseVibeDeposit(requestId: string) {
     return { success: true };
 
   } catch (error: any) {
-    return { error: error.message || "Failed to release deposit" };
+    return { error: getFriendlyErrorMessage(error, "Failed to release deposit") };
   }
 }

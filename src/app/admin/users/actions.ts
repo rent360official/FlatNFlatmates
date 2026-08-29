@@ -6,6 +6,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { logAdminAction } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { getFriendlyErrorMessage } from "@/lib/utils";
 
 async function getAdminActor() {
   const session = await getServerSession(authOptions);
@@ -54,7 +55,7 @@ export async function adminCreateUser(formData: FormData) {
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to create user" };
+    return { error: getFriendlyErrorMessage(error, "Failed to create user") };
   }
 }
 
@@ -82,7 +83,7 @@ export async function adminUpdateUserVerification(userId: string, status: 'pendi
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to update user verification" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update user verification") };
   }
 }
 
@@ -110,6 +111,6 @@ export async function adminUpdateUserRole(userId: string, role: any) {
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to update user role" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update user role") };
   }
 }

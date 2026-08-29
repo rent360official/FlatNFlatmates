@@ -484,6 +484,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: results });
   } catch (error: any) {
     console.error("Flatmate Search API Error:", error);
-    return NextResponse.json({ error: error.message || "Search failed" }, { status: 500 });
+    return NextResponse.json({ error: "An unexpected error occurred during flatmate search. Please try again later." }, { status: 500 });
   }
 }

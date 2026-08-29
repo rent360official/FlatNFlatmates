@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Presigned URL generation error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate presigned upload URL" },
+      { error: "An unexpected error occurred while generating upload credentials. Please try again later." },
       { status: 500 }
     );
   }

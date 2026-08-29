@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to submit request" }, { status: 500 });
+    console.error("Vibe checkout error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred while processing your request. Please try again later." }, { status: 500 });
   }
 }

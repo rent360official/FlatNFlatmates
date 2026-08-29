@@ -6,6 +6,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
+import { getFriendlyErrorMessage } from "@/lib/utils";
 
 async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -58,7 +59,7 @@ export async function updatePersonalInfo(formData: FormData) {
     revalidatePath("/profile");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to update profile" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update profile") };
   }
 }
 
@@ -75,7 +76,7 @@ export async function updateRoommateSettings(isSearchable: boolean, targetLocali
     revalidatePath("/profile/roommate");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to update roommate settings" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update roommate settings") };
   }
 }
 
@@ -147,7 +148,7 @@ export async function updateRoommateProfile(data: {
     return { success: true };
   } catch (error: any) {
     console.error("updateRoommateProfile server action error:", error);
-    return { error: error.message || "Failed to update roommate profile settings" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update roommate profile settings") };
   }
 }
 

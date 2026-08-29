@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to log proxy bridge" }, { status: 500 });
+    console.error("Proxy bridge error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred while initiating the call connection. Please try again later." }, { status: 500 });
   }
 }

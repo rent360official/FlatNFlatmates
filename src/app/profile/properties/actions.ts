@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import dbConnect from "@/lib/db";
 import Property from "@/models/Property";
 import { revalidatePath } from "next/cache";
+import { getFriendlyErrorMessage } from "@/lib/utils";
 
 async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -33,7 +34,7 @@ export async function togglePropertyStatus(propertyId: string, currentStatus: st
     revalidatePath("/profile/properties");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to update property status" };
+    return { error: getFriendlyErrorMessage(error, "Failed to update property status") };
   }
 }
 
@@ -55,6 +56,6 @@ export async function deleteProperty(propertyId: string) {
     revalidatePath("/profile/properties");
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || "Failed to delete property" };
+    return { error: getFriendlyErrorMessage(error, "Failed to delete property") };
   }
 }

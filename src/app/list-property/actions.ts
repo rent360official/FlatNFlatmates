@@ -7,6 +7,7 @@ import Property from "@/models/Property";
 import User from "@/models/User";
 import City from "@/models/City";
 import { revalidatePath } from "next/cache";
+import { getFriendlyErrorMessage } from "@/lib/utils";
 
 async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -131,6 +132,6 @@ export async function publishProperty(data: {
     revalidatePath("/");
     return { success: true, propertyId: property._id.toString() };
   } catch (error: any) {
-    return { error: error.message || "Failed to publish property" };
+    return { error: getFriendlyErrorMessage(error, "Failed to publish property") };
   }
 }
