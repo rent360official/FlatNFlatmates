@@ -6,7 +6,7 @@ export default function MapBackground() {
       {/* Map View Image */}
       <img
         src="/images/landing/map_view.png"
-        className="w-full h-full object-cover opacity-25 mix-blend-normal"
+        className="w-full h-full object-cover opacity-50 mix-blend-normal"
         alt="Pune Map View"
       />
 
