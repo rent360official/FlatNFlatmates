@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { sendVerificationToken } from "@/lib/telephony";
@@ -17,16 +19,34 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Find or create pending user
-    let user = await User.findOne({ phone: cleanPhone });
-    const exists = !!(user && user.name);
+    const session = await getServerSession(authOptions);
+    let user;
+    let exists = false;
 
-    if (!user) {
-      user = new User({
-        phone: cleanPhone,
-        role: "user",
-        verificationStatus: "pending",
-      });
+    if (session?.user) {
+      // Check if target phone is already registered/verified by another user
+      const existingUser = await User.findOne({ phone: cleanPhone, _id: { $ne: (session.user as any).id } });
+      if (existingUser && (existingUser.verificationStatus === "verified" || existingUser.name)) {
+        return NextResponse.json({ error: "This phone number is already registered to another account." }, { status: 400 });
+      }
+
+      user = await User.findById((session.user as any).id);
+      if (!user) {
+        return NextResponse.json({ error: "Logged-in user record not found in database" }, { status: 404 });
+      }
+      exists = !!user.name;
+    } else {
+      // Find or create pending user
+      user = await User.findOne({ phone: cleanPhone });
+      exists = !!(user && user.name);
+
+      if (!user) {
+        user = new User({
+          phone: cleanPhone,
+          role: "user",
+          verificationStatus: "pending",
+        });
+      }
     }
 
     const provider = process.env.TELEPHONY_PROVIDER || "mock";

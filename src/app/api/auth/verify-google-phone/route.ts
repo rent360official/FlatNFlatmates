@@ -31,14 +31,10 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Find the user document that matches the target phone number
-    let phoneUser = await User.findOne({ phone: cleanPhone });
-    if (!phoneUser) {
-      phoneUser = new User({
-        phone: cleanPhone,
-        role: "user",
-        verificationStatus: "pending",
-      });
+    // Find the current Google user document to verify OTP and extract details
+    const googleUser = await User.findById(googleUserId);
+    if (!googleUser) {
+      return NextResponse.json({ error: "Google account session not found in database" }, { status: 404 });
     }
 
     const provider = process.env.TELEPHONY_PROVIDER || "mock";
@@ -47,10 +43,10 @@ export async function POST(req: NextRequest) {
     if (provider === "mock") {
       if (otp === "123456") {
         isVerified = true;
-        phoneUser.otp = undefined; // Clear OTP
-      } else if (phoneUser.otp && phoneUser.otp.code === otp && phoneUser.otp.expiresAt > new Date()) {
+        googleUser.otp = undefined; // Clear OTP
+      } else if (googleUser.otp && googleUser.otp.code === otp && googleUser.otp.expiresAt > new Date()) {
         isVerified = true;
-        phoneUser.otp = undefined; // Clear OTP
+        googleUser.otp = undefined; // Clear OTP
       }
     } else {
       const { approved, error } = await checkVerificationToken(cleanPhone, otp);
@@ -64,11 +60,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid OTP code or OTP expired. Please request a new SMS." }, { status: 400 });
     }
 
-    // Find the current Google user document to extract details
-    const googleUser = await User.findById(googleUserId);
-    if (!googleUser) {
-      return NextResponse.json({ error: "Google account session not found in database" }, { status: 404 });
-    }
+    // Find the user document that matches the target phone number
+    let phoneUser = await User.findOne({ phone: cleanPhone, _id: { $ne: googleUser._id } });
 
     // Determine if the target phone number is already verified/active on another account
     const isPreExistingUser = phoneUser && (phoneUser.verificationStatus === "verified" || phoneUser.email || phoneUser.name);
@@ -99,6 +92,7 @@ export async function POST(req: NextRequest) {
       // New phone number: Simply update the Google user directly.
       googleUser.phone = cleanPhone;
       googleUser.verificationStatus = "verified";
+      googleUser.otp = undefined; // Clear OTP
 
       // Secure server-side super admin promotion for target number
       if (cleanPhone === "8933066862") {
@@ -107,8 +101,8 @@ export async function POST(req: NextRequest) {
 
       await googleUser.save();
 
-      // Clean up the placeholder user created during the send-otp step
-      if (phoneUser && !phoneUser.isNew) {
+      // Clean up the placeholder user if one exists
+      if (phoneUser) {
         await User.deleteOne({ _id: phoneUser._id });
       }
     }
