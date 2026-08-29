@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the user document that matches the target phone number
-    let phoneUser = await User.findOne({ phone: cleanPhone, _id: { $ne: googleUser._id } });
+    const phoneUser = await User.findOne({ phone: cleanPhone, _id: { $ne: googleUser._id } });
 
     // Determine if the target phone number is already verified/active on another account
     const isPreExistingUser = phoneUser && (phoneUser.verificationStatus === "verified" || phoneUser.email || phoneUser.name);
