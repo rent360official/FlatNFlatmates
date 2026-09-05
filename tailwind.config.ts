@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import { colors } from "./src/theme/colors";
 
 const config: Config = {
   content: [
@@ -44,27 +43,29 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom Theme Semantic Colors (Linked to colors.ts)
+        // Custom Theme Semantic Colors (matching src/theme/colors.ts)
         brand: {
-          primary: colors.brand.primary,
-          primaryHover: colors.brand.primaryHover,
-          secondary: colors.brand.secondary,
-          secondaryHover: colors.brand.secondaryHover,
-          tertiary: colors.brand.tertiary,
+          primary: '#097969',
+          primaryHover: '#0B8A78',
+          secondary: '#4D516D',
+          secondaryHover: '#5C6180',
+          tertiary: '#5097A4',
         },
         text: {
-          primary: colors.text.primary,
-          secondary: colors.text.secondary,
-          onDark: colors.text.onDark,
+          primary: '#000000',
+          secondary: '#4D516D',
+          onDark: '#FAF9F6',
         },
         status: {
-          success: colors.status.success,
-          successBg: colors.status.successBg,
+          success: '#097969',
+          successBg: '#95C8D8',
+          error: '#991B1B',
+          errorBg: '#FEF2F2',
         },
         customBg: {
-          base: colors.background.base,
-          surface: colors.background.surface,
-          subtle: colors.background.subtle,
+          base: '#FAF9F6',
+          surface: '#FFFFFF',
+          subtle: '#95C8D8',
         },
       },
       borderRadius: {

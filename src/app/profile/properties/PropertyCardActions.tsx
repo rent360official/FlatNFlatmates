@@ -1,8 +1,9 @@
 'use client';
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { togglePropertyStatus, deleteProperty } from "./actions";
-import { Pause, Play, Trash2 } from "lucide-react";
+import { Pause, Play, Trash2, Edit3, ExternalLink } from "lucide-react";
 
 export default function PropertyCardActions({ propertyId, status }: { propertyId: string, status: string }) {
   const [isPending, startTransition] = useTransition();
@@ -27,8 +28,28 @@ export default function PropertyCardActions({ propertyId, status }: { propertyId
   };
 
   return (
-    <div className="flex items-center space-x-2 mt-4 pt-4 border-t flex-wrap gap-y-2">
+    <div className="flex items-center space-x-2 mt-4 pt-4 border-t flex-wrap gap-2">
+      {/* View Dedicated Flat Page */}
+      <Link
+        href={`/flat/${propertyId}`}
+        className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-sm"
+      >
+        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+        <span>View Listing</span>
+      </Link>
+
+      {/* Edit Property Details */}
+      <Link
+        href={`/list-property?edit=${propertyId}`}
+        className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-brand-primary/30 bg-brand-primary/10 hover:bg-brand-primary/15 text-brand-primary font-medium"
+      >
+        <Edit3 className="h-3.5 w-3.5" />
+        <span>Edit</span>
+      </Link>
+
+      {/* Pause / Resume status toggle */}
       <button
+        type="button"
         onClick={handleToggleStatus}
         disabled={isPending}
         className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border ${
@@ -49,13 +70,16 @@ export default function PropertyCardActions({ propertyId, status }: { propertyId
           </>
         )}
       </button>
+
+      {/* Remove Listing */}
       <button
+        type="button"
         onClick={handleDelete}
         disabled={isPending}
-        className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-brand-secondary/20 bg-brand-secondary/10 hover:bg-brand-secondary/15 text-brand-secondaryHover disabled:opacity-50"
+        className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 disabled:opacity-50"
       >
-        <Trash2 className="h-3.5 w-3.5" />
-        <span>Remove</span>
+        <Trash2 className="h-3.5 w-3.5 text-red-700" />
+        <span className="text-red-700 font-semibold">Remove</span>
       </button>
     </div>
   );

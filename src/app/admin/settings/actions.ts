@@ -104,3 +104,77 @@ export async function createFeatureFlag(formData: FormData) {
     return { error: error.message || "Failed to create feature flag" };
   }
 }
+
+/**
+ * Updates platform media upload limits (video/image counts & sizes).
+ */
+export async function updateMediaLimitsConfig(formData: FormData) {
+  try {
+    const actor = await getAdminActor();
+    await dbConnect();
+
+    const configs = [
+      {
+        key: "max_property_videos",
+        label: "Max Property Videos",
+        val: parseInt(formData.get("max_property_videos") as string, 10) || 5,
+        description: "Maximum number of tour/walkthrough videos allowed per property listing.",
+      },
+      {
+        key: "max_video_size_mb",
+        label: "Max Video Size (MB)",
+        val: parseInt(formData.get("max_video_size_mb") as string, 10) || 100,
+        description: "Maximum file size allowed per uploaded video (in MB).",
+      },
+      {
+        key: "max_property_images",
+        label: "Max Property Images",
+        val: parseInt(formData.get("max_property_images") as string, 10) || 10,
+        description: "Maximum number of photos allowed per property listing.",
+      },
+      {
+        key: "max_image_size_mb",
+        label: "Max Image Size (MB)",
+        val: parseInt(formData.get("max_image_size_mb") as string, 10) || 10,
+        description: "Maximum file size allowed per uploaded image (in MB).",
+      },
+    ];
+
+    for (const item of configs) {
+      const existing = await FeatureFlag.findOne({ key: item.key });
+      const beforeState = existing ? existing.toObject() : null;
+
+      const updated = await FeatureFlag.findOneAndUpdate(
+        { key: item.key },
+        {
+          $set: {
+            label: item.label,
+            value: item.val,
+            status: "enabled",
+            category: "system_config",
+            description: item.description,
+            isActive: true,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      await logAdminAction({
+        actorId: actor.id,
+        action: "update_media_limits",
+        entityType: "FeatureFlag",
+        entityId: updated._id,
+        beforeState,
+        afterState: updated.toObject(),
+      });
+    }
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/list-property");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || "Failed to update media upload limits" };
+  }
+}
+

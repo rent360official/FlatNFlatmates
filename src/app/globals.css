@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
   :root {
     --background: 40 25% 97.3%;
@@ -93,5 +94,14 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Prevent iOS Safari from auto-zooming into inputs when tapped */
+  @media screen and (max-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }

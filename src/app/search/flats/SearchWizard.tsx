@@ -58,7 +58,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
   const [outsideEater, setOutsideEater] = useState<string>("");
 
   // Existing search states
-  const [distance, setDistance] = useState("5000"); // in meters
+  const [distance, setDistance] = useState("10000"); // in meters (10 km)
   const [bhkConfig, setBhkConfig] = useState("any");
   const [minRent, setMinRent] = useState("");
   const [maxRent, setMaxRent] = useState("");
@@ -113,7 +113,6 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
     }
   }, [initialLocality]);
 
-  // Compute active steps sequence dynamically for progress tracking
   const getStepsSequence = () => {
     const seq = [1, 2]; // Step 1: Location, Step 2: User Type
     if (userType === 'Professional') {
@@ -123,53 +122,83 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
     return seq;
   };
 
-  const handleNext = (currentStep: number) => {
-    if (currentStep === 1) {
-      setStep(2);
-    } else if (currentStep === 2) {
-      if (userType === "Professional") {
-        setStep(3);
-      } else {
-        setStep(5);
-      }
-    } else if (currentStep === 3) {
-      setStep(4);
-    } else if (currentStep === 4) {
-      setStep(5);
-    } else if (currentStep === 5) {
-      setStep(6);
-    } else if (currentStep === 6) {
-      setStep(7);
-    } else if (currentStep === 7) {
-      setStep(8);
-    } else if (currentStep === 8) {
-      setStep(9);
+  const getNextStep = (currentStep: number, overrideVal?: string) => {
+    if (currentStep === 1) return 2;
+    if (currentStep === 2) {
+      const effectiveUserType = overrideVal !== undefined ? overrideVal : userType;
+      return effectiveUserType === "Professional" ? 3 : 5;
     }
+    if (currentStep === 3) return 4;
+    if (currentStep === 4) return 5;
+    if (currentStep === 5) return 6;
+    if (currentStep === 6) return 7;
+    if (currentStep === 7) return 8;
+    if (currentStep === 8) return 9;
+    return 9;
+  };
+
+  const getPrevStep = (currentStep: number) => {
+    if (currentStep === 2) return 1;
+    if (currentStep === 3) return 2;
+    if (currentStep === 4) return 3;
+    if (currentStep === 5) {
+      return userType === "Professional" ? 4 : 2;
+    }
+    if (currentStep === 6) return 5;
+    if (currentStep === 7) return 6;
+    if (currentStep === 8) return 7;
+    if (currentStep === 9) return 8;
+    return 1;
+  };
+
+  const goToStep = (nextStepNum: number, push = true) => {
+    if (push && typeof window !== "undefined") {
+      window.history.pushState({ ...(window.history.state || {}), wizardStep: nextStepNum }, "", window.location.href);
+    }
+    setStep(nextStepNum);
+  };
+
+  const handleNext = (currentStep: number, overrideVal?: string) => {
+    const next = getNextStep(currentStep, overrideVal);
+    goToStep(next, true);
   };
 
   const handleBack = (currentStep: number) => {
-    if (currentStep === 2) {
-      setStep(1);
-    } else if (currentStep === 3) {
-      setStep(2);
-    } else if (currentStep === 4) {
-      setStep(3);
-    } else if (currentStep === 5) {
-      if (userType === "Professional") {
-        setStep(4);
-      } else {
-        setStep(2);
-      }
-    } else if (currentStep === 6) {
-      setStep(5);
-    } else if (currentStep === 7) {
-      setStep(6);
-    } else if (currentStep === 8) {
-      setStep(7);
-    } else if (currentStep === 9) {
-      setStep(8);
+    if (
+      typeof window !== "undefined" &&
+      window.history.state &&
+      typeof window.history.state.wizardStep === "number" &&
+      window.history.state.wizardStep > 1
+    ) {
+      window.history.back();
+    } else {
+      const prev = getPrevStep(currentStep);
+      goToStep(prev, false);
     }
   };
+
+  // Sync browser back/forward buttons with wizard steps
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const currentState = window.history.state || {};
+    if (typeof currentState.wizardStep !== "number") {
+      window.history.replaceState({ ...currentState, wizardStep: 1 }, "", window.location.href);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && typeof event.state.wizardStep === "number") {
+        setStep(event.state.wizardStep);
+      } else {
+        setStep(1);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   const fetchResults = async () => {
     setLoading(true);
@@ -340,20 +369,21 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
     if (!isMapsLoaded || step !== 1) return;
 
     const puneBounds = new (window as any).google.maps.LatLngBounds(
-      new (window as any).google.maps.LatLng(18.4, 73.6),
-      new (window as any).google.maps.LatLng(18.7, 74.1)
+      new (window as any).google.maps.LatLng(18.35, 73.65),
+      new (window as any).google.maps.LatLng(18.72, 74.05)
     );
 
     const isWithinPune = (lat: number, lng: number) => {
       return lat >= 18.35 && lat <= 18.75 && lng >= 73.55 && lng <= 74.15;
     };
 
-    // 1. Search Area Autocomplete (Locality level)
+    // 1. Search Area Autocomplete (Locality / Region level only)
     const areaInput = document.getElementById("search-area-autocomplete") as HTMLInputElement;
     if (areaInput) {
       const areaAutocomplete = new (window as any).google.maps.places.Autocomplete(areaInput, {
         componentRestrictions: { country: "in" },
         bounds: puneBounds,
+        strictBounds: true,
         types: ["(regions)"],
         fields: ["geometry", "name", "formatted_address"],
       });
@@ -384,6 +414,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
       const poiAutocomplete = new (window as any).google.maps.places.Autocomplete(poiInput, {
         componentRestrictions: { country: "in" },
         bounds: puneBounds,
+        strictBounds: true,
         fields: ["geometry", "name", "formatted_address"],
       });
 
@@ -423,13 +454,18 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
     currentValue: string,
     onChange: (val: string) => void,
     options: { label: string; emoji: string }[],
-    onNext: () => void,
+    onNext: (val?: string) => void,
     onBack: () => void,
     onSkip?: () => void
   ) => {
     const seq = getStepsSequence();
     const currentIdx = seq.indexOf(stepNum) + 1;
     const totalSteps = seq.length;
+
+    const handleSelectOption = (label: string) => {
+      onChange(label);
+      onNext(label);
+    };
 
     return (
       <div className="flex-grow flex items-center justify-center p-4 bg-slate-50/50">
@@ -448,7 +484,8 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
               return (
                 <button
                   key={opt.label}
-                  onClick={() => onChange(opt.label)}
+                  type="button"
+                  onClick={() => handleSelectOption(opt.label)}
                   className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-200 group ${isSelected
                     ? "border-brand-primary bg-brand-primary/10/20 ring-2 ring-brand-primary/20"
                     : "border-slate-200 hover:border-brand-primary/30 hover:bg-slate-50"
@@ -468,23 +505,17 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
             })}
           </div>
 
-          <div className="flex items-center space-x-3 pt-2">
+          <div className="flex items-center justify-between pt-2 border-t">
             <button
+              type="button"
               onClick={onBack}
               className="px-5 py-2.5 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Back
             </button>
-            <button
-              onClick={onNext}
-              disabled={!currentValue}
-              className="flex-1 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-40 disabled:hover:bg-brand-primary text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors"
-            >
-              <span>Continue</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
             {onSkip && (
               <button
+                type="button"
                 onClick={onSkip}
                 className="px-4 py-2.5 border border-dashed rounded-lg text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
               >
@@ -510,38 +541,102 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
               <p className="text-xs text-slate-500">Pick your target residential area and add daily commute destinations.</p>
             </div>
 
-            <div className="space-y-4">
-              {/* Search Area Locality Filter */}
-              <div className="space-y-1.5">
-                <label className="block text-[12px] font-semibold text-slate-500">Locality</label>
-                <div className="relative border rounded-full border-brand-primary bg-brand-primary/10/20">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Navigation className="h-3.5 w-3.5 text-brand-primary" />
+            <div className="space-y-5">
+              {/* Search Area Locality Filter - Elevated Hero Element */}
+              <div className="p-5 rounded-2xl bg-gradient-to-b from-brand-primary/[0.05] via-brand-primary/[0.02] to-transparent border border-brand-primary/20 space-y-4 shadow-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                      <Navigation className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block leading-tight">Target Locality / Area</label>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">Filter by residential zone or neighborhood in Pune</span>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200/80 shadow-xs shrink-0">
+                    Optional
+                  </span>
+                </div>
+
+                <div className="relative">
                   <input
                     id="search-area-autocomplete"
                     type="text"
-                    placeholder="Search locality (e.g. Hinjewadi, Baner, Kothrud)..."
+                    placeholder="Search locality or neighborhood in Pune (e.g. Baner, Hinjewadi)..."
                     value={searchAreaInput}
                     onChange={e => setSearchAreaInput(e.target.value)}
-                    className="w-full text-xs border rounded-full pl-9 pr-8 py-2.5 bg-slate-50 outline-brand-primary shadow-sm"
+                    onBlur={() => {
+                      // Only allow confirmed dropdown selection - revert unselected custom text
+                      if (!searchArea || searchArea.label !== searchAreaInput) {
+                        setSearchAreaInput(searchArea?.label || "");
+                      }
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") e.preventDefault();
+                    }}
+                    className="w-full text-xs font-medium border border-slate-250 hover:border-brand-primary/50 focus:border-brand-primary rounded-xl pl-3.5 pr-9 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-primary/10 shadow-xs transition-all"
                   />
                   {searchArea && (
                     <button
+                      type="button"
                       onClick={() => { setSearchArea(null); setSearchAreaInput(""); }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
+
+                {/* Popular Locality Chips */}
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Popular Localities in Pune:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(POPULAR_LOCALITIES_DATA).map(([name, data]) => {
+                      const isSelected = searchArea?.label === data.label || searchAreaInput.startsWith(name);
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSearchArea(null);
+                              setSearchAreaInput("");
+                            } else {
+                              setSearchArea({
+                                label: data.label,
+                                lat: data.lat,
+                                lng: data.lng,
+                              });
+                              setSearchAreaInput(data.label);
+                            }
+                          }}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-150 ${
+                            isSelected
+                              ? "bg-brand-primary text-white border-brand-primary shadow-xs font-semibold"
+                              : "bg-white text-slate-650 border-slate-200 hover:border-brand-primary/40 hover:text-brand-primary hover:bg-brand-primary/5"
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Autocomplete for Custom POIs */}
-              <div className="space-y-1.5">
-                <div className="flex flex-col">
-                  <label className="block text-[12px] font-semibold text-slate-500">Regular travel spots</label>
-                  <p className="block text-[10px] text-slate-500">To see exactly how far each place is from your future home.</p>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <label className="block text-xs font-semibold text-slate-800">Regular travel spots</label>
+                    <p className="block text-[10px] text-slate-500">To see exactly how far each place is from your future home.</p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                    Optional
+                  </span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -553,7 +648,14 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                     placeholder="Work, college, gym — anywhere you travel to often (e.g. Hinjewadi IT Park)..."
                     value={poiSearchInput}
                     onChange={e => setPoiSearchInput(e.target.value)}
-                    className="w-full text-xs border rounded-lg pl-9 pr-3 py-2.5 bg-slate-50 outline-brand-primary shadow-sm"
+                    onBlur={() => {
+                      // Discard unselected custom typed text on blur
+                      setPoiSearchInput("");
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") e.preventDefault();
+                    }}
+                    className="w-full text-xs border border-slate-250 hover:border-brand-primary/50 focus:border-brand-primary rounded-xl pl-9 pr-3 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-brand-primary/10 shadow-xs transition-all"
                   />
                 </div>
               </div>
@@ -570,6 +672,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                       >
                         <span>{poi.label}</span>
                         <button
+                          type="button"
                           onClick={() => setPoisList(prev => prev.filter(x => x.label !== poi.label))}
                           className="text-brand-primary/60 hover:text-brand-primaryHover font-extrabold ml-0.5"
                         >
@@ -583,7 +686,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
 
               {/* Distance radius query */}
               {(searchArea || poisList.length > 0) && (
-                <div className="space-y-2 animate-in fade-in duration-200">
+                <div className="space-y-2 animate-in fade-in duration-200 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
                   <label className="block text-[10px] font-semibold text-slate-500 uppercase">Max Commute Proximity Boundary</label>
                   <div className="flex items-center space-x-3">
                     <input
@@ -603,6 +706,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
               )}
 
               <button
+                type="button"
                 onClick={() => handleNext(1)}
                 className="w-full bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-sm"
               >
@@ -626,9 +730,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Professional", emoji: "💼" },
           { label: "Retired", emoji: "👴" }
         ],
-        () => handleNext(2),
+        (val) => handleNext(2, val),
         () => handleBack(2),
-        () => { setUserType(""); handleNext(2); }
+        () => { setUserType(""); handleNext(2, ""); }
       )}
 
       {/* STEP 3: PROFESSION (Conditional if User Type = Professional) */}
@@ -644,9 +748,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Self Employed", emoji: "🚀" },
           { label: "Others", emoji: "🛠️" }
         ],
-        () => handleNext(3),
+        (val) => handleNext(3, val),
         () => handleBack(3),
-        () => { setProfession(""); handleNext(3); }
+        () => { setProfession(""); handleNext(3, ""); }
       )}
 
       {/* STEP 4: SHIFT (Conditional if User Type = Professional) */}
@@ -660,9 +764,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Day Shift", emoji: "☀️" },
           { label: "Night Shift", emoji: "🌙" }
         ],
-        () => handleNext(4),
+        (val) => handleNext(4, val),
         () => handleBack(4),
-        () => { setShift(""); handleNext(4); }
+        () => { setShift(""); handleNext(4, ""); }
       )}
 
       {/* STEP 5: SOCIAL TYPE */}
@@ -676,9 +780,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Socializing", emoji: "🥳" },
           { label: "Reserved", emoji: "🤫" }
         ],
-        () => handleNext(5),
+        (val) => handleNext(5, val),
         () => handleBack(5),
-        () => { setSocialType(""); handleNext(5); }
+        () => { setSocialType(""); handleNext(5, ""); }
       )}
 
       {/* STEP 6: GYM GUY */}
@@ -693,9 +797,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Maybe", emoji: "🏃" },
           { label: "Not at all", emoji: "🛋️" }
         ],
-        () => handleNext(6),
+        (val) => handleNext(6, val),
         () => handleBack(6),
-        () => { setGymGuy(""); handleNext(6); }
+        () => { setGymGuy(""); handleNext(6, ""); }
       )}
 
       {/* STEP 7: OUTSIDE EATER */}
@@ -710,9 +814,9 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
           { label: "Only evening small snacks", emoji: "🍿" },
           { label: "No, only homemade foodie", emoji: "🍳" }
         ],
-        () => handleNext(7),
+        (val) => handleNext(7, val),
         () => handleBack(7),
-        () => { setOutsideEater(""); handleNext(7); }
+        () => { setOutsideEater(""); handleNext(7, ""); }
       )}
 
       {/* STEP 8: BUDGETS & SPECS */}
@@ -979,12 +1083,21 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                 <h2 className="text-lg font-bold text-slate-900">Flats in Pune ({properties.length})</h2>
                 <p className="text-xs text-slate-500">Sorted by proximity to commutes and roommate preferences compatibility.</p>
               </div>
-              <button
-                onClick={() => setStep(1)}
-                className="text-[10px] font-bold text-brand-primary hover:underline flex items-center"
-              >
-                Change Locality / Commute Node
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleBack(9)}
+                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 border px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-50 transition-colors"
+                >
+                  <SlidersHorizontal className="h-3 w-3" />
+                  <span>Edit Filters</span>
+                </button>
+                <button
+                  onClick={() => goToStep(1)}
+                  className="text-[11px] font-bold text-brand-primary hover:underline flex items-center"
+                >
+                  Change Locality / Commute Node
+                </button>
+              </div>
             </div>
 
             {loading ? (

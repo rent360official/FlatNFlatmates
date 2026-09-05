@@ -39,7 +39,8 @@ export async function publishProperty(data: {
   brokerageAmount: number;
   amenities: string[];
   houseRules: string[];
-  images: { url: string; isCover: boolean }[];
+  images: { url: string; isCover: boolean; fileName?: string }[];
+  videos?: { url: string; fileName?: string; sizeBytes?: number }[];
   tourVideoUrl?: string;
 
   // New fields — Lease Flexibility
@@ -101,7 +102,8 @@ export async function publishProperty(data: {
       amenities: data.amenities,
       houseRules: data.houseRules,
       images: data.images,
-      tourVideoUrl: data.tourVideoUrl,
+      videos: data.videos ?? (data.tourVideoUrl ? [{ url: data.tourVideoUrl, fileName: 'Tour Video' }] : []),
+      tourVideoUrl: data.tourVideoUrl || data.videos?.[0]?.url || undefined,
       managementType: 'self_managed',
       status: 'active',
 
@@ -133,5 +135,121 @@ export async function publishProperty(data: {
     return { success: true, propertyId: property._id.toString() };
   } catch (error: any) {
     return { error: getFriendlyErrorMessage(error, "Failed to publish property") };
+  }
+}
+
+export async function updateProperty(propertyId: string, data: {
+  // Existing fields
+  title: string;
+  description: string;
+  rentAmount: number;
+  depositAmount: number;
+  maintenanceAmount: number;
+  bhkConfig: string;
+  propertyType: string;
+  floor?: number;
+  totalFloors?: number;
+  areaSqft?: number;
+  localityId: string;
+  addressLine: string;
+  lat: number;
+  lng: number;
+  furnishingStatus: string;
+  tenantPreference: string;
+  brokerageFlag: boolean;
+  brokerageAmount: number;
+  amenities: string[];
+  houseRules: string[];
+  images: { url: string; isCover: boolean; fileName?: string }[];
+  videos?: { url: string; fileName?: string; sizeBytes?: number }[];
+  tourVideoUrl?: string;
+
+  // New fields — Lease Flexibility
+  availableFrom?: string | Date;
+  minLeaseMonths?: number;
+  lockInMonths?: number;
+
+  // New fields — Tenant Fit
+  petPolicy?: 'allowed' | 'not_allowed' | 'case_by_case';
+  maxOccupants?: number;
+
+  // New fields — Parking & EV
+  parkingType?: 'none' | 'two_wheeler' | 'four_wheeler' | 'both';
+  evChargingAvailable?: boolean;
+
+  // New fields — Infrastructure
+  powerBackup?: 'none' | 'partial' | 'full';
+  waterSupplyType?: 'municipal' | 'borewell' | 'tanker' | 'mixed';
+
+  // New fields — WFH / Internet
+  internetReadiness?: { fiberAvailable: boolean; avgSpeedMbps?: number };
+
+  // New fields — Safety Features
+  safetyFeatures?: string[];
+}) {
+  try {
+    const sessionUser = await getSessionUser();
+    await dbConnect();
+
+    const property = await Property.findById(propertyId);
+    if (!property) {
+      throw new Error("Property listing not found");
+    }
+
+    // Verify ownership
+    if (property.ownerId.toString() !== sessionUser.id && sessionUser.role !== 'admin') {
+      throw new Error("Unauthorized: You do not have permission to edit this property");
+    }
+
+    property.title = data.title;
+    property.description = data.description;
+    property.rentAmount = data.rentAmount;
+    property.depositAmount = data.depositAmount;
+    property.maintenanceAmount = data.maintenanceAmount;
+    property.bhkConfig = data.bhkConfig as any;
+    property.propertyType = data.propertyType as any;
+    property.floor = data.floor;
+    property.totalFloors = data.totalFloors;
+    property.areaSqft = data.areaSqft;
+    property.localityId = data.localityId as any;
+    property.addressLine = data.addressLine;
+    property.location = {
+      type: "Point",
+      coordinates: [data.lng, data.lat],
+    };
+    property.furnishingStatus = data.furnishingStatus as any;
+    property.tenantPreference = data.tenantPreference as any;
+    property.brokerageFlag = data.brokerageFlag;
+    property.brokerageAmount = data.brokerageAmount;
+    property.amenities = data.amenities;
+    property.houseRules = data.houseRules;
+    property.images = data.images as any;
+    property.videos = (data.videos ?? (data.tourVideoUrl ? [{ url: data.tourVideoUrl, fileName: 'Tour Video' }] : [])) as any;
+    property.tourVideoUrl = data.tourVideoUrl || data.videos?.[0]?.url || undefined;
+    
+    if (data.availableFrom) {
+      property.availableFrom = new Date(data.availableFrom);
+    }
+    if (data.minLeaseMonths !== undefined) property.minLeaseMonths = data.minLeaseMonths;
+    if (data.lockInMonths !== undefined) property.lockInMonths = data.lockInMonths;
+    if (data.petPolicy) property.petPolicy = data.petPolicy;
+    if (data.maxOccupants !== undefined) property.maxOccupants = data.maxOccupants;
+    if (data.parkingType) property.parkingType = data.parkingType;
+    if (data.evChargingAvailable !== undefined) property.evChargingAvailable = data.evChargingAvailable;
+    if (data.powerBackup) property.powerBackup = data.powerBackup;
+    if (data.waterSupplyType) property.waterSupplyType = data.waterSupplyType;
+    if (data.internetReadiness) property.internetReadiness = data.internetReadiness;
+    if (data.safetyFeatures) property.safetyFeatures = data.safetyFeatures;
+
+    await property.save();
+
+    revalidatePath("/profile/properties");
+    revalidatePath(`/flat/${propertyId}`);
+    revalidatePath("/search/flats");
+    revalidatePath("/");
+
+    return { success: true, propertyId: property._id.toString() };
+  } catch (error: any) {
+    return { error: getFriendlyErrorMessage(error, "Failed to update property listing") };
   }
 }

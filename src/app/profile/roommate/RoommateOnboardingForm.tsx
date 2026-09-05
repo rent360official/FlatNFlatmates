@@ -37,8 +37,8 @@ export default function RoommateOnboardingForm({
   const [isPending, startTransition] = useTransition();
 
   // Listing budget and property connection
-  const [budgetMin, setBudgetMin] = useState(initialListing.budgetMin.toString());
-  const [budgetMax, setBudgetMax] = useState(initialListing.budgetMax.toString());
+  const [budgetMin, setBudgetMin] = useState(initialListing.budgetMin ? initialListing.budgetMin.toString() : "");
+  const [budgetMax, setBudgetMax] = useState(initialListing.budgetMax ? initialListing.budgetMax.toString() : "");
   const [propertyId, setPropertyId] = useState(initialListing.propertyId);
 
   // Flatmate Preferences
@@ -136,6 +136,7 @@ export default function RoommateOnboardingForm({
             <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Budget Min (₹/mo)</label>
             <input 
               type="number"
+              placeholder="e.g. 5000"
               value={budgetMin}
               onChange={e => setBudgetMin(e.target.value)}
               className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
@@ -145,6 +146,7 @@ export default function RoommateOnboardingForm({
             <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Budget Max (₹/mo)</label>
             <input 
               type="number"
+              placeholder="e.g. 20000"
               value={budgetMax}
               onChange={e => setBudgetMax(e.target.value)}
               className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"

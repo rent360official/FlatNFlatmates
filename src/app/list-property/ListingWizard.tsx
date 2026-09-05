@@ -2,14 +2,15 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { publishProperty } from "./actions";
+import { publishProperty, updateProperty } from "./actions";
 import {
   Building, MapPin, Image as ImageIcon, ShieldCheck, Zap, PawPrint,
   ChevronLeft, ChevronRight, Sparkles, Check, CheckCircle2,
-  UploadCloud, X, Film, Star, Loader2
+  UploadCloud, X, Film, Star, Loader2, Trash2, AlertCircle, AlertTriangle
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
 import { mapStyles } from "@/lib/mapStyles";
+import type { MediaUploadConfig } from "@/lib/mediaConfig";
 
 interface Locality {
   _id: string;
@@ -18,66 +19,122 @@ interface Locality {
   lng: number;
 }
 
-export default function ListingWizard({ localities }: { localities: Locality[] }) {
+export default function ListingWizard({
+  localities,
+  mediaConfig = {
+    maxPropertyVideos: 5,
+    maxVideoSizeMb: 100,
+    maxPropertyImages: 10,
+    maxImageSizeMb: 10,
+  },
+  initialProperty,
+}: {
+  localities: Locality[];
+  mediaConfig?: MediaUploadConfig;
+  initialProperty?: any;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
 
+  // Validation States & Messages
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
+
+  const clearFieldError = (field: string) => {
+    setErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setGlobalError(null);
+  };
+
   // Wizard State
-  const [basics, setBasics] = useState({
-    title: "",
-    description: "",
-    bhkConfig: "2BHK",
-    propertyType: "apartment",
-    floor: 2,
-    totalFloors: 4,
-    areaSqft: 1000,
+  const [basics, setBasics] = useState<{
+    title: string;
+    description: string;
+    bhkConfig: string;
+    propertyType: string;
+    floor: number | string;
+    totalFloors: number | string;
+    areaSqft: number | string;
+  }>({
+    title: initialProperty?.title || "",
+    description: initialProperty?.description || "",
+    bhkConfig: initialProperty?.bhkConfig || "2BHK",
+    propertyType: initialProperty?.propertyType || "apartment",
+    floor: initialProperty?.floor !== undefined ? initialProperty.floor : "",
+    totalFloors: initialProperty?.totalFloors !== undefined ? initialProperty.totalFloors : "",
+    areaSqft: initialProperty?.areaSqft !== undefined ? initialProperty.areaSqft : "",
   });
 
   const [location, setLocation] = useState({
-    localityId: localities[0]?._id || "",
-    addressLine: "",
-    lat: localities[0]?.lat || 18.5597,
-    lng: localities[0]?.lng || 73.7922,
+    localityId: initialProperty?.localityId || localities[0]?._id || "",
+    addressLine: initialProperty?.addressLine || "",
+    lat: initialProperty?.lat || localities[0]?.lat || 18.5597,
+    lng: initialProperty?.lng || localities[0]?.lng || 73.7922,
   });
 
   const [media, setMedia] = useState<{
     images: { url: string; isCover: boolean; fileName: string }[];
-    tourVideoUrl: string;
+    videos: { url: string; fileName: string; sizeBytes?: number }[];
   }>({
-    images: [],
-    tourVideoUrl: "",
+    images: initialProperty?.images || [],
+    videos: initialProperty?.videos || [],
   });
 
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isUploading, setIsUploading] = useState(false);
 
-  const [amenities, setAmenities] = useState<string[]>([]);
-  const [houseRules, setHouseRules] = useState<string[]>([]);
-  const [safetyFeatures, setSafetyFeatures] = useState<string[]>([]);
+  const [amenities, setAmenities] = useState<string[]>(initialProperty?.amenities || []);
+  const [houseRules, setHouseRules] = useState<string[]>(initialProperty?.houseRules || []);
+  const [safetyFeatures, setSafetyFeatures] = useState<string[]>(initialProperty?.safetyFeatures || []);
 
-  const [propertyDetails, setPropertyDetails] = useState({
-    availableFrom: new Date().toISOString().split('T')[0], // today as default
-    minLeaseMonths: 11,
-    lockInMonths: 0,
-    petPolicy: 'case_by_case' as 'allowed' | 'not_allowed' | 'case_by_case',
-    maxOccupants: 2,
-    parkingType: 'none' as 'none' | 'two_wheeler' | 'four_wheeler' | 'both',
-    evChargingAvailable: false,
-    powerBackup: 'none' as 'none' | 'partial' | 'full',
-    waterSupplyType: 'municipal' as 'municipal' | 'borewell' | 'tanker' | 'mixed',
-    fiberAvailable: false,
-    avgSpeedMbps: '' as string | number,
+  const [propertyDetails, setPropertyDetails] = useState<{
+    availableFrom: string;
+    minLeaseMonths: number | string;
+    lockInMonths: number | string;
+    petPolicy: 'allowed' | 'not_allowed' | 'case_by_case';
+    maxOccupants: number | string;
+    parkingType: 'none' | 'two_wheeler' | 'four_wheeler' | 'both';
+    evChargingAvailable: boolean;
+    powerBackup: 'none' | 'partial' | 'full';
+    waterSupplyType: 'municipal' | 'borewell' | 'tanker' | 'mixed';
+    fiberAvailable: boolean;
+    avgSpeedMbps: string | number;
+  }>({
+    availableFrom: initialProperty?.availableFrom || new Date().toISOString().split('T')[0],
+    minLeaseMonths: initialProperty?.minLeaseMonths !== undefined ? initialProperty.minLeaseMonths : 11,
+    lockInMonths: initialProperty?.lockInMonths !== undefined ? initialProperty.lockInMonths : "",
+    petPolicy: initialProperty?.petPolicy || 'case_by_case',
+    maxOccupants: initialProperty?.maxOccupants !== undefined ? initialProperty.maxOccupants : "",
+    parkingType: initialProperty?.parkingType || 'none',
+    evChargingAvailable: !!initialProperty?.evChargingAvailable,
+    powerBackup: initialProperty?.powerBackup || 'none',
+    waterSupplyType: initialProperty?.waterSupplyType || 'municipal',
+    fiberAvailable: !!initialProperty?.fiberAvailable,
+    avgSpeedMbps: initialProperty?.avgSpeedMbps !== undefined ? initialProperty.avgSpeedMbps : '',
   });
 
-  const [pricing, setPricing] = useState({
-    rentAmount: 18000,
-    depositAmount: 50000,
-    maintenanceAmount: 2000,
-    furnishingStatus: "semi_furnished",
-    tenantPreference: "any",
-    brokerageFlag: false,
-    brokerageAmount: 0,
+  const [pricing, setPricing] = useState<{
+    rentAmount: number | string;
+    depositAmount: number | string;
+    maintenanceAmount: number | string;
+    furnishingStatus: string;
+    tenantPreference: string;
+    brokerageFlag: boolean;
+    brokerageAmount: number | string;
+  }>({
+    rentAmount: initialProperty?.rentAmount !== undefined ? initialProperty.rentAmount : "",
+    depositAmount: initialProperty?.depositAmount !== undefined ? initialProperty.depositAmount : "",
+    maintenanceAmount: initialProperty?.maintenanceAmount !== undefined ? initialProperty.maintenanceAmount : "",
+    furnishingStatus: initialProperty?.furnishingStatus || "semi_furnished",
+    tenantPreference: initialProperty?.tenantPreference || "any",
+    brokerageFlag: !!initialProperty?.brokerageFlag,
+    brokerageAmount: initialProperty?.brokerageAmount !== undefined ? initialProperty.brokerageAmount : "",
   });
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -215,15 +272,31 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
     }
   }, [isMapsLoaded, step]);
 
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return "";
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    if (media.images.length + files.length > mediaConfig.maxPropertyImages) {
+      setGlobalError(`You can upload a maximum of ${mediaConfig.maxPropertyImages} photos. You already have ${media.images.length}.`);
+      return;
+    }
 
     setIsUploading(true);
     const newImages = [...media.images];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      if (file.size > mediaConfig.maxImageSizeMb * 1024 * 1024) {
+        setGlobalError(`"${file.name}" exceeds the maximum image size limit of ${mediaConfig.maxImageSizeMb} MB.`);
+        continue;
+      }
+
       const fileId = `${file.name}-${Date.now()}`;
       setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
 
@@ -235,11 +308,13 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             fileName: file.name,
             fileType: file.type,
             mediaType: "image",
+            fileSize: file.size,
           }),
         });
 
         if (!res.ok) {
-          throw new Error("Failed to get presigned upload URL");
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to get presigned upload URL");
         }
 
         const { uploadUrl, publicUrl } = await res.json();
@@ -278,10 +353,11 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           fileName: file.name,
         });
 
-        setMedia(prev => ({ ...prev, images: newImages }));
+        setMedia(prev => ({ ...prev, images: [...newImages] }));
+        clearFieldError("images");
       } catch (err: any) {
         console.error(err);
-        alert(`Failed to upload ${file.name}: ${err.message}`);
+        setGlobalError(`Failed to upload ${file.name}: ${err.message}`);
       } finally {
         setTimeout(() => {
           setUploadProgress(prev => {
@@ -297,71 +373,95 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (media.videos.length + files.length > mediaConfig.maxPropertyVideos) {
+      setGlobalError(`You can upload a maximum of ${mediaConfig.maxPropertyVideos} videos. You already have ${media.videos.length}.`);
+      return;
+    }
 
     setIsUploading(true);
-    const fileId = `${file.name}-${Date.now()}`;
-    setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
+    const newVideos = [...media.videos];
 
-    try {
-      const res = await fetch("/api/media/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          mediaType: "video",
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to get presigned upload URL");
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > mediaConfig.maxVideoSizeMb * 1024 * 1024) {
+        setGlobalError(`"${file.name}" exceeds the maximum video size limit of ${mediaConfig.maxVideoSizeMb} MB.`);
+        continue;
       }
 
-      const { uploadUrl, publicUrl } = await res.json();
+      const fileId = `${file.name}-${Date.now()}`;
+      setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl, true);
-        xhr.setRequestHeader("Content-Type", file.type);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(prev => ({ ...prev, [fileId]: percentComplete }));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            reject(new Error(`S3 upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => {
-          reject(new Error("Network error during S3 upload"));
-        };
-
-        xhr.send(file);
-      });
-
-      setMedia(prev => ({ ...prev, tourVideoUrl: publicUrl }));
-    } catch (err: any) {
-      console.error(err);
-      alert(`Failed to upload video: ${err.message}`);
-    } finally {
-      setTimeout(() => {
-        setUploadProgress(prev => {
-          const next = { ...prev };
-          delete next[fileId];
-          return next;
+      try {
+        const res = await fetch("/api/media/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            mediaType: "video",
+            fileSize: file.size,
+          }),
         });
-      }, 1000);
-      setIsUploading(false);
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to get presigned upload URL");
+        }
+
+        const { uploadUrl, publicUrl } = await res.json();
+
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl, true);
+          xhr.setRequestHeader("Content-Type", file.type);
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = Math.round((event.loaded / event.total) * 100);
+              setUploadProgress(prev => ({ ...prev, [fileId]: percentComplete }));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              resolve();
+            } else {
+              reject(new Error(`S3 upload failed with status ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => {
+            reject(new Error("Network error during S3 upload"));
+          };
+
+          xhr.send(file);
+        });
+
+        newVideos.push({
+          url: publicUrl,
+          fileName: file.name,
+          sizeBytes: file.size,
+        });
+
+        setMedia(prev => ({ ...prev, videos: [...newVideos] }));
+      } catch (err: any) {
+        console.error(err);
+        setGlobalError(`Failed to upload video "${file.name}": ${err.message}`);
+      } finally {
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const next = { ...prev };
+            delete next[fileId];
+            return next;
+          });
+        }, 1000);
+      }
     }
+
+    setIsUploading(false);
   };
 
   const handleAmenityToggle = (name: string) => {
@@ -382,61 +482,132 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
     );
   };
 
-  const nextStep = () => {
-    // Basic validation
-    if (step === 1 && (!basics.title || !basics.description)) {
-      alert("Please fill in the title and description.");
-      return;
-    }
-    if (step === 2 && !location.addressLine) {
-      alert("Please provide the address line.");
-      return;
-    }
-    if (step === 3) {
+  const validateStep = (targetStep: number): boolean => {
+    const newErrors: Record<string, string> = {};
+    let generalErr: string | null = null;
+
+    if (targetStep === 1) {
+      if (!basics.title.trim()) {
+        newErrors.title = "Listing title is mandatory. Please enter a descriptive title.";
+      }
+      if (!basics.description.trim()) {
+        newErrors.description = "Property description is mandatory. Please add details about your flat.";
+      }
+    } else if (targetStep === 2) {
+      if (!location.localityId) {
+        newErrors.localityId = "Locality is mandatory. Please select a Pune locality.";
+      }
+      if (!location.addressLine.trim()) {
+        newErrors.addressLine = "Full street address is mandatory. Please enter the flat address.";
+      }
+    } else if (targetStep === 3) {
       if (isUploading) {
-        alert("Please wait for the media uploads to complete.");
-        return;
+        generalErr = "Please wait for your image/video uploads to complete before proceeding.";
+      } else if (media.images.length === 0) {
+        newErrors.images = "At least 1 property photo is mandatory before proceeding to the next step.";
+        generalErr = "Please upload at least 1 property photo.";
       }
-      if (media.images.length === 0) {
-        alert("Please upload at least one image of your flat.");
-        return;
+    } else if (targetStep === 5) {
+      if (!pricing.rentAmount || Number(pricing.rentAmount) <= 0) {
+        newErrors.rentAmount = "Monthly rent amount is mandatory (must be greater than 0).";
+      }
+      if (pricing.depositAmount === "" || pricing.depositAmount === undefined || Number(pricing.depositAmount) < 0) {
+        newErrors.depositAmount = "Security deposit amount is mandatory.";
+      }
+      if (pricing.brokerageFlag && (!pricing.brokerageAmount || Number(pricing.brokerageAmount) <= 0)) {
+        newErrors.brokerageAmount = "Brokerage commission amount is required when brokerage is enabled.";
       }
     }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0 && !generalErr) {
+      generalErr = Object.values(newErrors)[0];
+    }
+    setGlobalError(generalErr);
+
+    return Object.keys(newErrors).length === 0 && !generalErr;
+  };
+
+  const nextStep = () => {
+    if (!validateStep(step)) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setErrors({});
+    setGlobalError(null);
     setStep(prev => Math.min(prev + 1, 5));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const prevStep = () => {
+    setErrors({});
+    setGlobalError(null);
     setStep(prev => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStepClick = (targetIdx: number) => {
+    if (targetIdx < step) {
+      setErrors({});
+      setGlobalError(null);
+      setStep(targetIdx);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (targetIdx > step) {
+      // Validate current step before advancing
+      if (!validateStep(step)) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setErrors({});
+      setGlobalError(null);
+      setStep(targetIdx);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handlePublish = () => {
+    if (!validateStep(5)) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (isUploading) {
-      alert("Please wait for the media uploads to complete.");
+      setGlobalError("Please wait for media uploads to finish.");
       return;
     }
     if (media.images.length === 0) {
-      alert("Please upload at least one image of your flat.");
+      setGlobalError("Please upload at least one image of your flat.");
       return;
     }
+
+    setGlobalError(null);
     startTransition(async () => {
       const payload = {
         ...basics,
+        floor: basics.floor !== "" && basics.floor !== undefined ? Number(basics.floor) : undefined,
+        totalFloors: basics.totalFloors !== "" && basics.totalFloors !== undefined ? Number(basics.totalFloors) : undefined,
+        areaSqft: basics.areaSqft !== "" && basics.areaSqft !== undefined ? Number(basics.areaSqft) : undefined,
         ...location,
         ...pricing,
+        rentAmount: Number(pricing.rentAmount) || 0,
+        depositAmount: Number(pricing.depositAmount) || 0,
+        maintenanceAmount: Number(pricing.maintenanceAmount) || 0,
+        brokerageAmount: pricing.brokerageFlag ? (Number(pricing.brokerageAmount) || 0) : 0,
         amenities,
         houseRules,
         safetyFeatures,
         images: media.images.map(img => ({
           url: img.url,
           isCover: img.isCover,
+          fileName: img.fileName,
         })),
-        tourVideoUrl: media.tourVideoUrl || undefined,
+        videos: media.videos,
+        tourVideoUrl: media.videos[0]?.url || undefined,
         // New property details fields
         availableFrom: propertyDetails.availableFrom,
-        minLeaseMonths: propertyDetails.minLeaseMonths,
-        lockInMonths: propertyDetails.lockInMonths,
+        minLeaseMonths: propertyDetails.minLeaseMonths !== "" ? Number(propertyDetails.minLeaseMonths) : 11,
+        lockInMonths: propertyDetails.lockInMonths !== "" ? Number(propertyDetails.lockInMonths) : 0,
         petPolicy: propertyDetails.petPolicy,
-        maxOccupants: propertyDetails.maxOccupants,
+        maxOccupants: propertyDetails.maxOccupants !== "" ? Number(propertyDetails.maxOccupants) : 2,
         parkingType: propertyDetails.parkingType,
         evChargingAvailable: propertyDetails.evChargingAvailable,
         powerBackup: propertyDetails.powerBackup,
@@ -447,12 +618,21 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
         },
       };
 
-      const res = await publishProperty(payload);
+      const res = initialProperty?._id
+        ? await updateProperty(initialProperty._id, payload)
+        : await publishProperty(payload);
+
       if (res.success) {
-        alert("Listing published successfully!");
-        router.push("/profile/properties");
+        setPublishSuccessMessage(
+          initialProperty?._id
+            ? "Listing updated successfully! Redirecting..."
+            : "Listing published successfully! Redirecting..."
+        );
+        setTimeout(() => {
+          router.push("/profile/properties");
+        }, 1200);
       } else {
-        alert(res.error);
+        setGlobalError(res.error || (initialProperty?._id ? "Failed to update listing. Please check required fields." : "Failed to publish listing. Please check required fields."));
       }
     });
   };
@@ -461,6 +641,32 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
 
   return (
     <div className="space-y-8 w-full max-w-3xl min-w-[320px] sm:min-w-[500px] md:min-w-[640px] mx-auto bg-white border rounded-2xl p-6 md:p-8 shadow-sm">
+      {/* Success Notification Banner */}
+      {publishSuccessMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-800 animate-in fade-in duration-200">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span className="text-xs font-semibold">{publishSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Global Error Banner if validation fails */}
+      {globalError && (
+        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200 text-red-700 shadow-sm">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-xs font-bold text-red-900">Mandatory Information Missing</h4>
+            <p className="text-[11px] text-red-700 mt-0.5">{globalError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGlobalError(null)}
+            className="text-red-400 hover:text-red-600 text-xs font-bold p-1 rounded"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Steps Indicator */}
       <div className="flex items-center justify-start md:justify-between gap-4 border-b pb-4 overflow-x-auto scrollbar-thin">
         {stepsList.map((name, index) => {
@@ -468,8 +674,13 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           const isActive = idx === step;
           const isDone = idx < step;
           return (
-            <div key={name} className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0">
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isDone
+            <button
+              key={name}
+              type="button"
+              onClick={() => handleStepClick(idx)}
+              className="flex items-center space-x-1.5 md:space-x-2 flex-shrink-0 cursor-pointer text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary rounded-lg p-1 transition-all"
+            >
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-colors ${isDone
                   ? "bg-brand-primary text-white"
                   : isActive
                     ? "border-2 border-brand-primary text-brand-primaryHover font-semibold"
@@ -477,11 +688,11 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 }`}>
                 {isDone ? <Check className="h-3 w-3" /> : idx}
               </div>
-              <span className={`text-[10px] md:text-xs font-semibold whitespace-nowrap ${isActive ? "text-brand-primary" : isDone ? "text-slate-700" : "text-slate-400"
+              <span className={`text-[10px] md:text-xs font-semibold whitespace-nowrap transition-colors ${isActive ? "text-brand-primary font-bold" : isDone ? "text-slate-700" : "text-slate-400"
                 } hidden xs:inline sm:inline`}>
                 {name}
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -499,26 +710,66 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
 
           <div className="space-y-3.5">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Listing Title</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                  Listing Title <span className="text-red-500 font-bold">*</span>
+                </label>
+                {errors.title && (
+                  <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Mandatory field
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={basics.title}
-                onChange={e => setBasics({ ...basics, title: e.target.value })}
+                onChange={e => {
+                  clearFieldError("title");
+                  setBasics({ ...basics, title: e.target.value });
+                }}
                 required
                 placeholder="e.g. Spacious 2BHK flat with terrace in Baner"
-                className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
+                className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                  errors.title ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-slate-50"
+                }`}
               />
+              {errors.title && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.title}
+                </p>
+              )}
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Detailed Description</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                  Detailed Description <span className="text-red-500 font-bold">*</span>
+                </label>
+                {errors.description && (
+                  <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Mandatory field
+                  </span>
+                )}
+              </div>
               <textarea
                 value={basics.description}
-                onChange={e => setBasics({ ...basics, description: e.target.value })}
+                onChange={e => {
+                  clearFieldError("description");
+                  setBasics({ ...basics, description: e.target.value });
+                }}
                 required
                 placeholder="Describe furnishing, accessibility, key features..."
                 rows={4}
-                className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
+                className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                  errors.description ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-slate-50"
+                }`}
               />
+              {errors.description && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.description}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -554,8 +805,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Floor No.</label>
                 <input
                   type="number"
-                  value={basics.floor}
-                  onChange={e => setBasics({ ...basics, floor: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 2"
+                  value={basics.floor ?? ""}
+                  onChange={e => setBasics({ ...basics, floor: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
                 />
               </div>
@@ -563,8 +815,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Total Floors</label>
                 <input
                   type="number"
-                  value={basics.totalFloors}
-                  onChange={e => setBasics({ ...basics, totalFloors: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 4"
+                  value={basics.totalFloors ?? ""}
+                  onChange={e => setBasics({ ...basics, totalFloors: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
                 />
               </div>
@@ -572,8 +825,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Super Area (Sq.Ft.)</label>
                 <input
                   type="number"
-                  value={basics.areaSqft}
-                  onChange={e => setBasics({ ...basics, areaSqft: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 1000"
+                  value={basics.areaSqft ?? ""}
+                  onChange={e => setBasics({ ...basics, areaSqft: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
                 />
               </div>
@@ -619,15 +873,35 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Full Street Address</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                  Full Street Address <span className="text-red-500 font-bold">*</span>
+                </label>
+                {errors.addressLine && (
+                  <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Mandatory field
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={location.addressLine}
-                onChange={e => setLocation({ ...location, addressLine: e.target.value })}
+                onChange={e => {
+                  clearFieldError("addressLine");
+                  setLocation({ ...location, addressLine: e.target.value });
+                }}
                 required
                 placeholder="e.g. Flat 402, Building C, Highrise Palms, Baner Road"
-                className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
+                className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                  errors.addressLine ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-slate-50"
+                }`}
               />
+              {errors.addressLine && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.addressLine}
+                </p>
+              )}
             </div>
 
             {/* Google Map Picker Interactive Locator */}
@@ -681,30 +955,55 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center">
               <ImageIcon className="mr-2 h-4.5 w-4.5 text-brand-primary" />
-              Media Gallery & Video Tour
+              Media Gallery & Video Tours
             </h3>
-            <p className="text-[11px] text-slate-400">Upload high-quality images and an optional video tour of your flat.</p>
+            <p className="text-[11px] text-slate-400">Upload high-quality images and up to {mediaConfig.maxPropertyVideos} video tours of your flat.</p>
           </div>
 
-          <div className="space-y-4">
-            {/* Upload Area */}
+          <div className="space-y-6">
+            {/* Image Upload Area */}
             <div className="space-y-2">
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Property Images (Min 1 required)</label>
-              <div className="border-2 border-dashed border-slate-200 hover:border-brand-primary/60 rounded-xl p-6 text-center cursor-pointer transition-colors relative bg-slate-50/50">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-                <div className="flex flex-col items-center justify-center space-y-2">
-                  <UploadCloud className="h-8 w-8 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-650">Click or drag images to upload</span>
-                  <span className="text-[10px] text-slate-450">JPG, PNG, WEBP allowed. First image becomes the Cover image.</span>
-                </div>
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+                  Property Photos <span className="text-red-500 font-bold">*</span> ({media.images.length}/{mediaConfig.maxPropertyImages})
+                </label>
+                <span className="text-[10px] text-slate-400">Max {mediaConfig.maxImageSizeMb} MB each</span>
               </div>
+
+              {errors.images && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium flex items-center gap-2 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{errors.images}</span>
+                </div>
+              )}
+
+              {media.images.length < mediaConfig.maxPropertyImages ? (
+                <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors relative ${
+                  errors.images
+                    ? "border-red-400 bg-red-50/20"
+                    : "border-slate-200 hover:border-brand-primary/60 bg-slate-50/50"
+                }`}>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <UploadCloud className={`h-8 w-8 ${errors.images ? "text-red-400" : "text-slate-400"}`} />
+                    <span className="text-xs font-semibold text-slate-650">Click or drag images to upload</span>
+                    <span className="text-[10px] text-slate-450">
+                      JPG, PNG, WEBP allowed (Max {mediaConfig.maxImageSizeMb}MB each). At least 1 image is required.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border rounded-xl text-center text-xs text-slate-500 font-medium">
+                  Maximum photo limit ({mediaConfig.maxPropertyImages}) reached.
+                </div>
+              )}
             </div>
 
             {/* Uploading progress indicator */}
@@ -768,7 +1067,7 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                           }
                           setMedia(prev => ({ ...prev, images: filtered }));
                         }}
-                        className="absolute top-2 right-2 bg-red-650 hover:bg-red-700 text-white p-1 rounded-full shadow border border-red-500 opacity-90 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 bg-red-700 hover:bg-red-800 text-white p-1 rounded-full shadow border border-red-600 opacity-90 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -784,45 +1083,82 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
             )}
 
             {/* Video Section */}
-            <div className="space-y-2 border-t pt-4">
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center">
-                <Film className="h-3.5 w-3.5 mr-1 text-brand-primary" />
-                Tour Video (Optional)
-              </label>
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                  <Film className="h-3.5 w-3.5 mr-1 text-brand-primary" />
+                  Tour & Walkthrough Videos ({media.videos.length}/{mediaConfig.maxPropertyVideos})
+                </label>
+                <span className="text-[10px] text-slate-400">Max {mediaConfig.maxVideoSizeMb} MB each</span>
+              </div>
 
-              {media.tourVideoUrl ? (
-                <div className="border rounded-xl p-3 bg-brand-primary/10/50 flex items-center justify-between gap-3 animate-in fade-in duration-200">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <Film className="h-5 w-5 text-brand-primary flex-shrink-0" />
-                    <div className="text-[10px] min-w-0">
-                      <span className="block font-bold text-slate-700">Video Uploaded successfully</span>
-                      <a href={media.tourVideoUrl} target="_blank" rel="noreferrer" className="text-brand-primary hover:underline truncate block font-mono">
-                        {media.tourVideoUrl}
-                      </a>
+              {/* Uploaded Videos List */}
+              {media.videos.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {media.videos.map((vid, idx) => (
+                    <div key={idx} className="border border-slate-200 bg-slate-50 rounded-xl p-3 flex flex-col justify-between space-y-2 animate-in fade-in duration-200 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary flex-shrink-0">
+                            <Film className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block font-bold text-slate-800 text-xs truncate" title={vid.fileName}>
+                              {vid.fileName || `Video ${idx + 1}`}
+                            </span>
+                            {vid.sizeBytes && (
+                              <span className="text-[10px] text-slate-400 font-mono font-medium">
+                                {formatFileSize(vid.sizeBytes)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filtered = media.videos.filter((_, vIdx) => vIdx !== idx);
+                            setMedia(prev => ({ ...prev, videos: filtered }));
+                          }}
+                          className="text-[10px] text-red-700 hover:text-red-800 font-semibold p-1 hover:bg-red-50 rounded transition-colors flex items-center space-x-1 flex-shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-700" />
+                          <span className="text-red-700">Remove</span>
+                        </button>
+                      </div>
+
+                      {/* Video Player Preview */}
+                      <video
+                        src={vid.url}
+                        controls
+                        preload="metadata"
+                        className="w-full max-h-40 rounded-lg bg-black object-contain"
+                      />
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMedia(prev => ({ ...prev, tourVideoUrl: "" }))}
-                    className="text-[10px] text-red-650 hover:text-red-700 font-bold flex-shrink-0"
-                  >
-                    Remove Video
-                  </button>
+                  ))}
                 </div>
-              ) : (
-                <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 text-center cursor-pointer hover:border-brand-primary/60 transition-all relative">
+              )}
+
+              {/* Video Upload Dropzone */}
+              {media.videos.length < mediaConfig.maxPropertyVideos ? (
+                <div className="border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-xl p-5 text-center cursor-pointer hover:border-brand-primary/60 transition-all relative">
                   <input
                     type="file"
                     accept="video/*"
+                    multiple
                     onChange={handleVideoUpload}
                     disabled={isUploading}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   />
                   <div className="flex flex-col items-center justify-center space-y-1">
-                    <UploadCloud className="h-6 w-6 text-slate-400" />
-                    <span className="text-xs font-semibold text-slate-650">Select a video to upload</span>
-                    <span className="text-[10px] text-slate-450">Supported formats: MP4, WebM (Optional tour video).</span>
+                    <UploadCloud className="h-7 w-7 text-slate-400" />
+                    <span className="text-xs font-semibold text-slate-650">Select or drag videos to upload</span>
+                    <span className="text-[10px] text-slate-450">Supported formats: MP4, WebM (Max {mediaConfig.maxVideoSizeMb} MB per video, up to {mediaConfig.maxPropertyVideos} videos).</span>
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border rounded-xl text-center text-xs text-slate-500 font-medium">
+                  Maximum video limit ({mediaConfig.maxPropertyVideos}) reached.
                 </div>
               )}
             </div>
@@ -916,8 +1252,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                     <input
                       type="number"
                       min="1"
-                      value={propertyDetails.minLeaseMonths}
-                      onChange={e => setPropertyDetails({ ...propertyDetails, minLeaseMonths: parseInt(e.target.value) || 11 })}
+                      placeholder="e.g. 11"
+                      value={propertyDetails.minLeaseMonths ?? ""}
+                      onChange={e => setPropertyDetails({ ...propertyDetails, minLeaseMonths: e.target.value === "" ? "" : parseInt(e.target.value, 10) || 0 })}
                       className="w-full text-xs border rounded-lg px-3 py-2 bg-white outline-brand-primary"
                     />
                   </div>
@@ -926,8 +1263,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                     <input
                       type="number"
                       min="0"
-                      value={propertyDetails.lockInMonths}
-                      onChange={e => setPropertyDetails({ ...propertyDetails, lockInMonths: parseInt(e.target.value) || 0 })}
+                      placeholder="e.g. 0"
+                      value={propertyDetails.lockInMonths ?? ""}
+                      onChange={e => setPropertyDetails({ ...propertyDetails, lockInMonths: e.target.value === "" ? "" : parseInt(e.target.value, 10) || 0 })}
                       className="w-full text-xs border rounded-lg px-3 py-2 bg-white outline-brand-primary"
                     />
                   </div>
@@ -956,8 +1294,9 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                       type="number"
                       min="1"
                       max="10"
-                      value={propertyDetails.maxOccupants}
-                      onChange={e => setPropertyDetails({ ...propertyDetails, maxOccupants: parseInt(e.target.value) || 2 })}
+                      placeholder="e.g. 2"
+                      value={propertyDetails.maxOccupants ?? ""}
+                      onChange={e => setPropertyDetails({ ...propertyDetails, maxOccupants: e.target.value === "" ? "" : parseInt(e.target.value, 10) || 0 })}
                       className="w-full text-xs border rounded-lg px-3 py-2 bg-white outline-brand-primary"
                     />
                   </div>
@@ -1114,31 +1453,80 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Rent Amount (₹/mo)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                    Rent Amount (₹/mo) <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  {errors.rentAmount && (
+                    <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Required
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
-                  value={pricing.rentAmount}
-                  onChange={e => setPricing({ ...pricing, rentAmount: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 18000"
+                  value={pricing.rentAmount ?? ""}
+                  onChange={e => {
+                    clearFieldError("rentAmount");
+                    setPricing({
+                      ...pricing,
+                      rentAmount: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0,
+                    });
+                  }}
                   required
-                  className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
+                  className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                    errors.rentAmount ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-slate-50"
+                  }`}
                 />
+                {errors.rentAmount && (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {errors.rentAmount}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Deposit Amount (₹)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                    Deposit Amount (₹) <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  {errors.depositAmount && (
+                    <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Required
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
-                  value={pricing.depositAmount}
-                  onChange={e => setPricing({ ...pricing, depositAmount: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 50000"
+                  value={pricing.depositAmount ?? ""}
+                  onChange={e => {
+                    clearFieldError("depositAmount");
+                    setPricing({
+                      ...pricing,
+                      depositAmount: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0,
+                    });
+                  }}
                   required
-                  className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
+                  className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                    errors.depositAmount ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-slate-50"
+                  }`}
                 />
+                {errors.depositAmount && (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {errors.depositAmount}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Maintenance (₹/mo)</label>
                 <input
                   type="number"
-                  value={pricing.maintenanceAmount}
-                  onChange={e => setPricing({ ...pricing, maintenanceAmount: parseInt(e.target.value) || 0 })}
+                  placeholder="e.g. 2000"
+                  value={pricing.maintenanceAmount ?? ""}
+                  onChange={e => setPricing({ ...pricing, maintenanceAmount: e.target.value === "" ? ("" as any) : parseInt(e.target.value, 10) || 0 })}
                   className="w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary bg-slate-50"
                 />
               </div>
@@ -1182,7 +1570,10 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
                 </div>
                 <button
                   type="button"
-                  onClick={() => setPricing({ ...pricing, brokerageFlag: !pricing.brokerageFlag })}
+                  onClick={() => {
+                    clearFieldError("brokerageAmount");
+                    setPricing({ ...pricing, brokerageFlag: !pricing.brokerageFlag });
+                  }}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${pricing.brokerageFlag ? "bg-brand-primary" : "bg-slate-200"
                     }`}
                 >
@@ -1195,14 +1586,34 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
 
               {pricing.brokerageFlag && (
                 <div className="animate-in fade-in duration-200">
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Brokerage Commission Amount (₹)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                      Brokerage Commission Amount (₹) <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    {errors.brokerageAmount && (
+                      <span className="text-[10px] text-red-500 font-semibold flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Required
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
-                    value={pricing.brokerageAmount}
-                    onChange={e => setPricing({ ...pricing, brokerageAmount: parseInt(e.target.value) || 0 })}
+                    value={pricing.brokerageAmount || ""}
+                    onChange={e => {
+                      clearFieldError("brokerageAmount");
+                      setPricing({ ...pricing, brokerageAmount: e.target.value === "" ? 0 : parseInt(e.target.value, 10) || 0 });
+                    }}
                     placeholder="e.g. 10000"
-                    className="w-full text-xs border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+                    className={`w-full text-xs border rounded-lg px-3 py-2 outline-brand-primary transition-all ${
+                      errors.brokerageAmount ? "border-red-400 ring-1 ring-red-400 bg-red-50/20" : "bg-white"
+                    }`}
                   />
+                  {errors.brokerageAmount && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {errors.brokerageAmount}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1210,37 +1621,59 @@ export default function ListingWizard({ localities }: { localities: Locality[] }
         </div>
       )}
 
-      {/* Navigation Actions */}
-      <div className="flex items-center justify-between border-t pt-4">
-        <button
-          type="button"
-          onClick={prevStep}
-          disabled={step === 1 || isPending}
-          className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 flex items-center"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          <span>Back</span>
-        </button>
-
-        {step < 5 ? (
-          <button
-            type="button"
-            onClick={nextStep}
-            className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-5 py-2 text-xs font-semibold flex items-center transition-colors"
-          >
-            <span>Next Step</span>
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={isPending}
-            className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-6 py-2.5 text-xs font-bold transition-colors disabled:opacity-50 flex items-center"
-          >
-            {isPending ? "Publishing..." : "Publish Listing"}
-          </button>
+      {/* Navigation Actions & Error Banner */}
+      <div className="space-y-4 border-t pt-4">
+        {/* Bottom Error Alert Banner (if scrolled down) */}
+        {globalError && (
+          <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-in fade-in duration-200 text-red-700 shadow-sm">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-xs font-bold text-red-900">Please complete mandatory fields</h4>
+              <p className="text-[11px] text-red-700 mt-0.5">{globalError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGlobalError(null)}
+              className="text-red-400 hover:text-red-600 text-xs font-bold p-1 rounded"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         )}
+
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={prevStep}
+            disabled={step === 1 || isPending}
+            className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 flex items-center"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            <span>Back</span>
+          </button>
+
+          {step < 5 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-5 py-2 text-xs font-semibold flex items-center transition-colors shadow-sm"
+            >
+              <span>Next Step</span>
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={isPending}
+              className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-6 py-2.5 text-xs font-bold transition-colors disabled:opacity-50 flex items-center shadow-sm"
+            >
+              {isPending
+                ? (initialProperty?._id ? "Saving Changes..." : "Publishing...")
+                : (initialProperty?._id ? "Save Changes" : "Publish Listing")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

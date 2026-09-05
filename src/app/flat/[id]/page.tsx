@@ -11,7 +11,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import CallButton from "./CallButton";
 import { 
-  Navigation, ArrowLeft, Sparkles, Check, AlertTriangle
+  Navigation, ArrowLeft, Sparkles, Check, AlertTriangle, Film
 } from "lucide-react";
 import React from "react";
 
@@ -31,6 +31,9 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
   if (!property) {
     notFound();
   }
+
+  // Increment real page views count
+  await Property.findByIdAndUpdate(params.id, { $inc: { viewsCount: 1 } });
 
   // Fetch cached amenities counts
   const amenityDoc = await AmenityCache.findOne({ propertyId: property._id }).lean();
@@ -353,6 +356,40 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
               )}
             </div>
           </div>
+
+          {/* Property Video Tours */}
+          {((property.videos && property.videos.length > 0) || property.tourVideoUrl) && (
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                  <Film className="h-4 w-4 text-brand-primary" />
+                  Video Tour & Walkthroughs ({property.videos?.length || 1})
+                </h3>
+                <p className="text-[11px] text-slate-400">High-definition video walkthroughs uploaded by the property owner.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(property.videos && property.videos.length > 0
+                  ? property.videos
+                  : [{ url: property.tourVideoUrl!, fileName: 'Tour Video' }]
+                ).map((vid: any, idx: number) => (
+                  <div key={idx} className="bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-800 flex flex-col">
+                    <video
+                      src={vid.url}
+                      controls
+                      preload="metadata"
+                      className="w-full max-h-56 bg-black object-contain"
+                    />
+                    {vid.fileName && (
+                      <div className="p-2.5 bg-slate-900/90 border-t border-slate-800 text-[11px] font-medium text-slate-300 truncate">
+                        {vid.fileName}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Commute Distances Locator */}
           <div className="space-y-4 border-t pt-6">

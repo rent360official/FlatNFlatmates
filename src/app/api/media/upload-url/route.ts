@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOptions";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getS3Client, getS3Config } from "@/lib/s3";
+import { getMediaUploadConfig } from "@/lib/mediaConfig";
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +16,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const { fileName, fileType, mediaType } = await req.json();
+    const { fileName, fileType, mediaType, fileSize } = await req.json();
 
     if (!fileName || !fileType) {
       return NextResponse.json(
         { error: "Missing required fields: fileName and fileType" },
         { status: 400 }
       );
+    }
+
+    // Validate size against admin configured limits
+    const limits = await getMediaUploadConfig();
+    if (fileSize && typeof fileSize === "number") {
+      if (mediaType === "video") {
+        const maxBytes = limits.maxVideoSizeMb * 1024 * 1024;
+        if (fileSize > maxBytes) {
+          return NextResponse.json(
+            { error: `Video size exceeds the maximum allowed limit of ${limits.maxVideoSizeMb} MB.` },
+            { status: 400 }
+          );
+        }
+      } else {
+        const maxBytes = limits.maxImageSizeMb * 1024 * 1024;
+        if (fileSize > maxBytes) {
+          return NextResponse.json(
+            { error: `Image size exceeds the maximum allowed limit of ${limits.maxImageSizeMb} MB.` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const s3Client = getS3Client();

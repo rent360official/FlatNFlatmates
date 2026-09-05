@@ -21,8 +21,8 @@ export const HERO_CARDS: HeroCard[] = [
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
     x: 22,
     y: 42,
-    mx: 20,
-    my: 65
+    mx: 18,
+    my: 54
   },
   {
     id: "h2",
@@ -33,8 +33,8 @@ export const HERO_CARDS: HeroCard[] = [
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80",
     x: 76,
     y: 38,
-    mx: 80,
-    my: 60
+    mx: 50,
+    my: 38
   },
   {
     id: "h3",
@@ -45,8 +45,8 @@ export const HERO_CARDS: HeroCard[] = [
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
     x: 15,
     y: 75,
-    mx: 50,
-    my: 88
+    mx: 82,
+    my: 54
   },
   {
     id: "h4",

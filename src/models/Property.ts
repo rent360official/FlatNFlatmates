@@ -25,7 +25,8 @@ export interface IProperty extends Document {
   brokerageAmount: number;
   amenities: string[];
   houseRules: string[];
-  images: { url: string; isCover: boolean }[];
+  images: { url: string; isCover: boolean; fileName?: string }[];
+  videos?: { url: string; fileName?: string; sizeBytes?: number }[];
   tourVideoUrl?: string;
   googleMapPlaceId?: string;
   managementType: 'self_managed' | 'platform_managed';
@@ -60,6 +61,9 @@ export interface IProperty extends Document {
 
   // --- Safety Features (separate from amenities) ---
   safetyFeatures: string[];
+
+  // --- Analytics & Tracking ---
+  viewsCount?: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -119,6 +123,14 @@ const PropertySchema: Schema<IProperty> = new Schema(
       {
         url: { type: String, required: true },
         isCover: { type: Boolean, default: false },
+        fileName: { type: String },
+      },
+    ],
+    videos: [
+      {
+        url: { type: String, required: true },
+        fileName: { type: String },
+        sizeBytes: { type: Number },
       },
     ],
     tourVideoUrl: { type: String },
@@ -179,6 +191,9 @@ const PropertySchema: Schema<IProperty> = new Schema(
 
     // --- Safety Features (free-text chips, separate from amenities) ---
     safetyFeatures: { type: [String], default: [] },
+
+    // --- Analytics & Tracking ---
+    viewsCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -188,6 +203,7 @@ PropertySchema.index({ location: '2dsphere' });
 PropertySchema.index({ status: 1 });
 PropertySchema.index({ cityId: 1, localityId: 1 });
 PropertySchema.index({ cityId: 1, rentAmount: 1, bhkConfig: 1, furnishingStatus: 1 });
+PropertySchema.index({ viewsCount: -1 });
 
 // New indexes for the most-commonly filtered new fields
 PropertySchema.index({ availableFrom: 1 });

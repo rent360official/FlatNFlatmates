@@ -3,6 +3,7 @@ import { HERO_CARDS } from './hero-cards.data';
 import MapBackground from './MapBackground';
 import FloatingPropertyCard from './FloatingPropertyCard';
 import CursorLinkLines from './CursorLinkLines';
+import MobileMapLinkLines from './MobileMapLinkLines';
 import HeroCopyBlock from './HeroCopyBlock';
 import CTAButtons from './CTAButtons';
 
@@ -77,9 +78,15 @@ export default function HeroMapSection() {
           </div> */}
 
           {/* Mobile compact mini-map container */}
-          <div className="lg:hidden relative overflow-hidden bg-customBg-base border border-gray-200/80 rounded-2xl h-[220px] w-full mt-6 shadow-sm select-none">
-            {/* Map view image background inside mini-map */}
-            <MapBackground />
+          <div className="lg:hidden relative overflow-hidden bg-customBg-base border border-gray-200/80 rounded-2xl h-[250px] w-full mt-6 shadow-sm select-none">
+            {/* Map view image background inside mini-map (without gradient masks) */}
+            <MapBackground isMiniMap={true} />
+
+            {/* Connecting Dotted Lines and Wandering Badge for Mobile Cards */}
+            <MobileMapLinkLines
+              cards={HERO_CARDS.slice(0, 3)}
+              prefersReducedMotion={prefersReducedMotion}
+            />
 
             {/* 3 Scattered Mobile Cards */}
             {HERO_CARDS.slice(0, 3).map((card) => (

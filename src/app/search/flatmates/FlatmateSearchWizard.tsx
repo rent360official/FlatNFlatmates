@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
 import { mapStyles } from "@/lib/mapStyles";
+import { POPULAR_LOCALITIES_DATA } from "../flats/SearchWizard";
 
 interface POI {
   _id: string;
@@ -38,7 +39,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
     lng: number;
   }[]>([]);
   const [poiSearchInput, setPoiSearchInput] = useState("");
-  const [distance, setDistance] = useState("5000"); // in meters
+  const [distance, setDistance] = useState("10000"); // in meters (10 km)
 
   // Lifestyle Preferences State
   const [prefUserType, setPrefUserType] = useState<string>(""); // Student, Professional, Retired, No preference
@@ -190,29 +191,82 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
     filterSleep,
   ]);
 
-  const handleNext = (currentStep: number) => {
-    if (currentStep === 3 && prefUserType !== "Professional") {
+  const getNextStep = (currentStep: number, overrideVal?: string) => {
+    if (currentStep === 1) return 2;
+    if (currentStep === 3) {
+      const effectivePref = overrideVal !== undefined ? overrideVal : prefUserType;
       // Skip Profession and Shift if not looking for Professional
-      setStep(6);
-    } else if (currentStep === 4 && myUserType !== "Professional") {
+      return effectivePref === "Professional" ? 4 : 6;
+    } else if (currentStep === 4) {
+      const effectiveMy = overrideVal !== undefined ? overrideVal : myUserType;
       // Skip Profession and Shift details if searcher is not Professional
-      setStep(6);
+      return effectiveMy === "Professional" ? 5 : 6;
     } else {
-      setStep(currentStep + 1);
+      return currentStep + 1;
     }
   };
 
-  const handleBack = (currentStep: number) => {
+  const getPrevStep = (currentStep: number) => {
     if (currentStep === 6) {
       if (prefUserType === "Professional") {
-        setStep(5);
+        return 5;
       } else {
-        setStep(3);
+        return 3;
       }
+    } else if (currentStep > 1) {
+      return currentStep - 1;
+    }
+    return 1;
+  };
+
+  const goToStep = (nextStepNum: number, push = true) => {
+    if (push && typeof window !== "undefined") {
+      window.history.pushState({ ...(window.history.state || {}), flatmateWizardStep: nextStepNum }, "", window.location.href);
+    }
+    setStep(nextStepNum);
+  };
+
+  const handleNext = (currentStep: number, overrideVal?: string) => {
+    const next = getNextStep(currentStep, overrideVal);
+    goToStep(next, true);
+  };
+
+  const handleBack = (currentStep: number) => {
+    if (
+      typeof window !== "undefined" &&
+      window.history.state &&
+      typeof window.history.state.flatmateWizardStep === "number" &&
+      window.history.state.flatmateWizardStep > 1
+    ) {
+      window.history.back();
     } else {
-      setStep(currentStep - 1);
+      const prev = getPrevStep(currentStep);
+      goToStep(prev, false);
     }
   };
+
+  // Sync browser back/forward buttons with flatmate wizard steps
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const currentState = window.history.state || {};
+    if (typeof currentState.flatmateWizardStep !== "number") {
+      window.history.replaceState({ ...currentState, flatmateWizardStep: 1 }, "", window.location.href);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && typeof event.state.flatmateWizardStep === "number") {
+        setStep(event.state.flatmateWizardStep);
+      } else {
+        setStep(1);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   // Google Map Initialization (Flow 1 ONLY)
   useEffect(() => {
@@ -302,8 +356,8 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
     if (!isMapsLoaded || step !== 2) return;
 
     const puneBounds = new (window as any).google.maps.LatLngBounds(
-      new (window as any).google.maps.LatLng(18.4, 73.6),
-      new (window as any).google.maps.LatLng(18.7, 74.1)
+      new (window as any).google.maps.LatLng(18.35, 73.65),
+      new (window as any).google.maps.LatLng(18.72, 74.05)
     );
 
     const isWithinPune = (lat: number, lng: number) => {
@@ -315,6 +369,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
       const areaAutocomplete = new (window as any).google.maps.places.Autocomplete(areaInput, {
         componentRestrictions: { country: "in" },
         bounds: puneBounds,
+        strictBounds: true,
         types: ["(regions)"],
         fields: ["geometry", "name", "formatted_address"],
       });
@@ -340,6 +395,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
       const poiAutocomplete = new (window as any).google.maps.places.Autocomplete(poiInput, {
         componentRestrictions: { country: "in" },
         bounds: puneBounds,
+        strictBounds: true,
         fields: ["geometry", "name", "formatted_address"],
       });
 
@@ -379,10 +435,15 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
     currentValue: string,
     onChange: (val: string) => void,
     options: { label: string; emoji: string }[],
-    onNext: () => void,
+    onNext: (val?: string) => void,
     onBack: () => void,
     onSkip?: () => void
   ) => {
+    const handleSelectOption = (label: string) => {
+      onChange(label);
+      onNext(label);
+    };
+
     return (
       <div className="flex-grow flex items-center justify-center p-4 bg-slate-50/50">
         <div className="w-full max-w-xl bg-white border rounded-2xl p-6 md:p-8 shadow-sm space-y-6 animate-in fade-in duration-200">
@@ -394,14 +455,14 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             <p className="text-xs text-slate-500">{description}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {options.map((opt) => {
               const isSelected = currentValue === opt.label;
               return (
                 <button
                   key={opt.label}
                   type="button"
-                  onClick={() => onChange(opt.label)}
+                  onClick={() => handleSelectOption(opt.label)}
                   className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-200 group ${
                     isSelected
                       ? "border-brand-primary bg-brand-primary/10/20 ring-2 ring-brand-primary/20"
@@ -427,20 +488,13 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             })}
           </div>
 
-          <div className="flex items-center space-x-3 pt-4 border-t">
+          <div className="flex items-center justify-between pt-4 border-t">
             <button
+              type="button"
               onClick={onBack}
               className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Back
-            </button>
-            <button
-              onClick={onNext}
-              disabled={!currentValue}
-              className="flex-1 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-40 disabled:hover:bg-brand-primary text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-sm"
-            >
-              <span>Continue</span>
-              <ChevronRight className="h-4 w-4" />
             </button>
             {onSkip && (
               <button
@@ -478,7 +532,10 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setSearchIntent("ROOMMATE_WITH_FLAT")}
+                onClick={() => {
+                  setSearchIntent("ROOMMATE_WITH_FLAT");
+                  goToStep(2);
+                }}
                 className={`flex flex-col items-center justify-center p-6 rounded-2xl border transition-all duration-200 group text-center ${
                   searchIntent === "ROOMMATE_WITH_FLAT"
                     ? "border-brand-primary bg-brand-primary/10/20 ring-2 ring-brand-primary/20"
@@ -496,7 +553,10 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
 
               <button
                 type="button"
-                onClick={() => setSearchIntent("FLATMATE_ONLY")}
+                onClick={() => {
+                  setSearchIntent("FLATMATE_ONLY");
+                  goToStep(2);
+                }}
                 className={`flex flex-col items-center justify-center p-6 rounded-2xl border transition-all duration-200 group text-center ${
                   searchIntent === "FLATMATE_ONLY"
                     ? "border-brand-primary bg-brand-primary/10/20 ring-2 ring-brand-primary/20"
@@ -512,14 +572,6 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                 </span>
               </button>
             </div>
-
-            <button
-              onClick={() => setStep(2)}
-              className="w-full bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-sm"
-            >
-              <span>Continue</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
         </div>
       )}
@@ -544,66 +596,132 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
               </p>
             </div>
 
-            <div className="space-y-4">
-              {/* Search Area Locality Input */}
-              <div className="space-y-1.5">
-                <label className="block text-[12px] font-bold text-slate-500 uppercase">
-                  {searchIntent === "ROOMMATE_WITH_FLAT" ? "Preferred Area" : "Search Area"}
-                </label>
-                <div className="relative border rounded-lg border-brand-primary bg-brand-primary/10/20">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Navigation className="h-3.5 w-3.5 text-brand-primary" />
+            <div className="space-y-5">
+              {/* Search Area Locality Filter - Elevated Hero Element */}
+              <div className="p-5 rounded-2xl bg-gradient-to-b from-brand-primary/[0.05] via-brand-primary/[0.02] to-transparent border border-brand-primary/20 space-y-4 shadow-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                      <Navigation className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block leading-tight">
+                        {searchIntent === "ROOMMATE_WITH_FLAT" ? "Preferred Locality / Area" : "Target Search Locality"}
+                      </label>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">Filter by neighborhood in Pune</span>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200/80 shadow-xs shrink-0">
+                    Optional
+                  </span>
+                </div>
+
+                <div className="relative">
                   <input
                     id="search-area-autocomplete"
                     type="text"
-                    placeholder="Search a neighborhood (e.g. Hinjewadi, Baner)..."
+                    placeholder="Search locality or neighborhood in Pune (e.g. Hinjewadi, Baner)..."
                     value={searchAreaInput}
                     onChange={(e) => setSearchAreaInput(e.target.value)}
-                    className="w-full text-xs border rounded-lg pl-9 pr-8 py-2.5 bg-slate-50 outline-brand-primary shadow-sm"
+                    onBlur={() => {
+                      // Only allow confirmed dropdown selection - revert unselected custom text
+                      if (!searchArea || searchArea.label !== searchAreaInput) {
+                        setSearchAreaInput(searchArea?.label || "");
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.preventDefault();
+                    }}
+                    className="w-full text-xs font-medium border border-slate-250 hover:border-brand-primary/50 focus:border-brand-primary rounded-xl pl-3.5 pr-9 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-primary/10 shadow-xs transition-all"
                   />
                   {searchArea && (
                     <button
+                      type="button"
                       onClick={() => {
                         setSearchArea(null);
                         setSearchAreaInput("");
                       }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
+
+                {/* Popular Locality Chips */}
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Popular Localities in Pune:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(POPULAR_LOCALITIES_DATA).map(([name, data]) => {
+                      const isSelected = searchArea?.label === data.label || searchAreaInput.startsWith(name);
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSearchArea(null);
+                              setSearchAreaInput("");
+                            } else {
+                              setSearchArea({
+                                label: data.label,
+                                lat: data.lat,
+                                lng: data.lng,
+                              });
+                              setSearchAreaInput(data.label);
+                            }
+                          }}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-150 ${
+                            isSelected
+                              ? "bg-brand-primary text-white border-brand-primary shadow-xs font-semibold"
+                              : "bg-white text-slate-650 border-slate-200 hover:border-brand-primary/40 hover:text-brand-primary hover:bg-brand-primary/5"
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Autocomplete for Custom POIs */}
-              <div className="space-y-1.5">
-                <div className="flex flex-col">
-                  <label className="block text-[12px] font-bold text-slate-500 uppercase">
-                    Your Daily Destinations
-                  </label>
-                  <p className="block text-[10px] text-slate-450">
-                    Add your office, college, or gym…
-                  </p>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <label className="block text-xs font-semibold text-slate-800">
+                      Your Daily Destinations
+                    </label>
+                    <p className="block text-[10px] text-slate-500">
+                      Add your office, college, or gym to see distances.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                    Optional
+                  </span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-3.5 w-3.5 text-slate-455" />
+                    <Search className="h-3.5 w-3.5 text-slate-400" />
                   </div>
                   <input
                     id="poi-autocomplete"
                     type="text"
-                    placeholder="Work, college, gym — anywhere you travel to often..."
+                    placeholder="Work, college, gym — anywhere you travel to often in Pune..."
                     value={poiSearchInput}
                     onChange={(e) => setPoiSearchInput(e.target.value)}
-                    className="w-full text-xs border rounded-lg pl-9 pr-3 py-2.5 bg-slate-50 outline-brand-primary shadow-sm"
+                    onBlur={() => {
+                      // Discard unselected custom typed text on blur
+                      setPoiSearchInput("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.preventDefault();
+                    }}
+                    className="w-full text-xs border border-slate-250 hover:border-brand-primary/50 focus:border-brand-primary rounded-xl pl-9 pr-3 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-brand-primary/10 shadow-xs transition-all"
                   />
                 </div>
-                {searchIntent === "ROOMMATE_WITH_FLAT" && (
-                  <p className="text-[10px] text-slate-400 mt-1 italic">
-                    We'll show distance and travel time from the flat to each of these.
-                  </p>
-                )}
               </div>
 
               {/* Selected POIs List Chips */}
@@ -621,6 +739,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                         <Car className="h-3.5 w-3.5" />
                         <span className="truncate max-w-[150px]">{poi.label}</span>
                         <button
+                          type="button"
                           onClick={() => setPoisList((prev) => prev.filter((p) => p.label !== poi.label))}
                           className="hover:text-red-500 font-extrabold focus:outline-none"
                         >
@@ -634,7 +753,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
 
               {/* Distance range slider */}
               {(searchArea || poisList.length > 0) && (
-                <div className="space-y-2 animate-in fade-in duration-200">
+                <div className="space-y-2 animate-in fade-in duration-200 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
                   <label className="block text-[10px] font-semibold text-slate-500 uppercase">
                     Max Commute Proximity Boundary
                   </label>
@@ -657,15 +776,16 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
 
               <div className="flex items-center space-x-3 pt-4 border-t">
                 <button
-                  onClick={() => setStep(1)}
+                  type="button"
+                  onClick={() => handleBack(2)}
                   className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   Back
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleNext(2)}
-                  disabled={!searchArea && poisList.length === 0}
-                  className="flex-1 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-40 disabled:hover:bg-brand-primary text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-sm"
+                  className="flex-1 bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg py-2.5 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-sm"
                 >
                   <span>Continue</span>
                   <ChevronRight className="h-4 w-4" />
@@ -691,7 +811,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             { label: "Professional", emoji: "💼" },
             { label: "No preference", emoji: "🤝" },
           ],
-          () => handleNext(3),
+          (val) => handleNext(3, val),
           () => handleBack(3)
         )}
 
@@ -707,7 +827,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             { label: "Student", emoji: "🎓" },
             { label: "Professional", emoji: "💼" },
           ],
-          () => handleNext(4),
+          (val) => handleNext(4, val),
           () => handleBack(4)
         )}
 
@@ -724,7 +844,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
             { label: "Quiet & keeps to themselves", emoji: "🤫" },
             { label: "Either works", emoji: "✨" },
           ],
-          () => handleNext(5),
+          (val) => handleNext(5, val),
           () => handleBack(5)
         )}
 
@@ -890,7 +1010,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
 
               <div className="flex items-center space-x-3 pt-4 border-t">
                 <button
-                  onClick={() => setStep(6)}
+                  onClick={() => handleBack(7)}
                   className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   Back
@@ -1016,7 +1136,14 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                   </button>
                 )}
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => handleBack(8)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded px-2.5 py-1 text-[10px] font-bold flex items-center space-x-1 border transition-colors flex-shrink-0 font-sans"
+                >
+                  <SlidersHorizontal className="h-3 w-3" />
+                  <span>Edit Preferences</span>
+                </button>
+                <button
+                  onClick={() => goToStep(1)}
                   className="text-[10px] font-bold text-brand-primary hover:underline flex items-center font-sans"
                 >
                   Reset Search Filters

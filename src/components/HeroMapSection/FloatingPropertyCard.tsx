@@ -30,28 +30,28 @@ export default function FloatingPropertyCard({ card, isMobileMap = false }: Floa
         <div className="absolute w-2 h-2 bg-brand-primary rounded-full border border-white shadow-sm transform -translate-x-1/2 -translate-y-1/2" />
 
         {/* Stem */}
-        <div className="absolute bottom-1 left-1/2 w-0.5 h-5 bg-brand-primary/40 transform -translate-x-1/2" />
+        <div className="absolute bottom-1 left-1/2 w-0.5 h-3 bg-brand-primary/40 transform -translate-x-1/2" />
 
         {/* Card itself */}
         <Link
           href={href}
-          className="absolute bottom-[24px] left-1/2 transform -translate-x-1/2 pointer-events-auto flex flex-col w-[95px] bg-white border border-gray-200/80 rounded-lg overflow-hidden shadow-sm transition-all duration-200 active:scale-95 focus-visible:ring-1 focus-visible:ring-brand-primary focus-visible:outline-none"
+          className="absolute bottom-[16px] left-1/2 transform -translate-x-1/2 pointer-events-auto flex flex-col w-[78px] bg-white border border-gray-200/80 rounded-lg overflow-hidden shadow-sm transition-all duration-200 active:scale-95 focus-visible:ring-1 focus-visible:ring-brand-primary focus-visible:outline-none"
         >
-          <div className="h-12 w-full relative bg-slate-100 overflow-hidden">
+          <div className="h-9 w-full relative bg-slate-100 overflow-hidden">
             <img
               src={card.image}
               className="h-full w-full object-cover"
               alt={card.title}
             />
-            <span className="absolute top-0.5 right-0.5 bg-slate-900/85 backdrop-blur-[0.5px] text-white text-[7px] font-bold px-1 rounded shadow-sm">
+            <span className="absolute top-0.5 right-0.5 bg-slate-900/85 backdrop-blur-[0.5px] text-white text-[6px] font-bold px-1 rounded shadow-sm">
               {card.price}
             </span>
           </div>
           
           <div className="p-1 flex flex-col gap-0.5 text-left">
-            <h4 className="text-[8px] font-bold text-gray-900 truncate">{card.title}</h4>
+            <h4 className="text-[7.5px] font-bold text-gray-900 truncate leading-tight">{card.title}</h4>
             <div className="flex items-center justify-between mt-0.5">
-              <span className="bg-status-successBg/15 text-brand-primary text-[7px] font-bold px-1 rounded-full">
+              <span className="bg-status-successBg/15 text-brand-primary text-[6.5px] font-bold px-1 rounded-full">
                 {card.match}% Match
               </span>
             </div>

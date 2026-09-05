@@ -1,8 +1,9 @@
 import dbConnect from "@/lib/db";
 import FeatureFlag from "@/models/FeatureFlag";
-import { createFeatureFlag } from "./actions";
+import { createFeatureFlag, updateMediaLimitsConfig } from "./actions";
+import { getMediaUploadConfig } from "@/lib/mediaConfig";
 import FlagToggle from "./FlagToggle";
-import { Settings, Plus } from "lucide-react";
+import { Settings, Plus, Film, Image as ImageIcon, Save, ShieldCheck } from "lucide-react";
 import React from "react";
 
 export const dynamic = 'force-dynamic';
@@ -11,13 +12,119 @@ export default async function SettingsAdminPage() {
   await dbConnect();
   
   const flags = await FeatureFlag.find({ category: 'system_config' }).sort({ key: 1 }).lean();
+  const mediaConfig = await getMediaUploadConfig();
 
   return (
     <div className="space-y-8">
       {/* Title */}
       <div>
-        <h2 className="text-xl font-bold text-slate-900">System Configuration & Feature Toggles</h2>
-        <p className="text-xs text-slate-500">Enable or disable backend system configs dynamically without deploying new code. For user-facing feature rollouts, use <a href="/admin/features" className="text-brand-primary hover:underline font-semibold">Feature Management</a>.</p>
+        <h2 className="text-xl font-bold text-slate-900">System Configuration & Platform Settings</h2>
+        <p className="text-xs text-slate-500">Configure global platform limits (media upload quotas and size restrictions) and dynamic backend toggles without deploying new code.</p>
+      </div>
+
+      {/* Media Upload Limits Config Section */}
+      <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-5">
+        <div className="flex items-center justify-between border-b pb-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center">
+              <Film className="mr-2 h-4.5 w-4.5 text-brand-primary" />
+              Media Upload Limits & Constraints
+            </h3>
+            <p className="text-xs text-slate-500">Control the maximum number of videos/photos and max file sizes allowed per property listing on the platform.</p>
+          </div>
+          <span className="inline-flex items-center text-[11px] font-semibold bg-brand-primary/10 text-brand-primary px-2.5 py-1 rounded-full border border-brand-primary/20">
+            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+            Live Platform Rules
+          </span>
+        </div>
+
+        <form action={updateMediaLimitsConfig as any} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Max Videos */}
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center">
+                <Film className="h-3.5 w-3.5 mr-1.5 text-brand-primary" />
+                Max Videos Per Listing
+              </label>
+              <input
+                type="number"
+                name="max_property_videos"
+                defaultValue={mediaConfig.maxPropertyVideos}
+                min="1"
+                max="20"
+                required
+                className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+              />
+              <p className="text-[10px] text-slate-400">Default: 5 videos</p>
+            </div>
+
+            {/* Max Video Size MB */}
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center">
+                <Film className="h-3.5 w-3.5 mr-1.5 text-brand-primary" />
+                Max Video Size (MB)
+              </label>
+              <input
+                type="number"
+                name="max_video_size_mb"
+                defaultValue={mediaConfig.maxVideoSizeMb}
+                min="5"
+                max="500"
+                required
+                className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+              />
+              <p className="text-[10px] text-slate-400">Default: 100 MB per video</p>
+            </div>
+
+            {/* Max Images */}
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center">
+                <ImageIcon className="h-3.5 w-3.5 mr-1.5 text-brand-primary" />
+                Max Images Per Listing
+              </label>
+              <input
+                type="number"
+                name="max_property_images"
+                defaultValue={mediaConfig.maxPropertyImages}
+                min="1"
+                max="50"
+                required
+                className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+              />
+              <p className="text-[10px] text-slate-400">Default: 10 images</p>
+            </div>
+
+            {/* Max Image Size MB */}
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center">
+                <ImageIcon className="h-3.5 w-3.5 mr-1.5 text-brand-primary" />
+                Max Image Size (MB)
+              </label>
+              <input
+                type="number"
+                name="max_image_size_mb"
+                defaultValue={mediaConfig.maxImageSizeMb}
+                min="1"
+                max="50"
+                required
+                className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+              />
+              <p className="text-[10px] text-slate-400">Default: 10 MB per image</p>
+            </div>
+
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-5 py-2.5 text-xs font-semibold flex items-center space-x-2 transition-colors shadow-sm"
+            >
+              <Save className="h-4 w-4" />
+              <span>Save Media Constraints</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

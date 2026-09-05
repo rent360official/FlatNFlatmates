@@ -56,11 +56,13 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="bg-brand-primary bg-clip-text text-xl font-bold tracking-tight text-transparent">
-            FlatNFlatmates.in
-          </span>
-          <span className="text-[10px] font-semibold bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider">
+        <Link href="/" className="flex items-center space-x-2.5">
+          <img
+            src="/logo.png"
+            alt="FlatNFlatmates.in"
+            className="h-8 sm:h-9 w-auto object-contain max-w-[190px]"
+          />
+          <span className="text-[10px] font-semibold bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider hidden sm:inline-block">
             Pune
           </span>
         </Link>

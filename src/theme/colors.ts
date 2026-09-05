@@ -29,6 +29,8 @@ export const colors = {
   status: {
     success: '#097969',      // reuse blue spruce for "match %", positive states — it already reads as green/positive
     successBg: '#95C8D8',    // background for success badges/pills, at reduced opacity
+    error: '#991B1B',        // dark red (red-800) for destructive/remove actions
+    errorBg: '#FEF2F2',      // soft red background for alerts/destructive buttons
   },
   border: {
     default: 'rgba(0,0,0,0.1)',

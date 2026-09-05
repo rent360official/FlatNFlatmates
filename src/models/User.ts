@@ -58,7 +58,6 @@ const UserSchema: Schema<IUser> = new Schema(
 );
 
 // Indexes
-UserSchema.index({ phone: 1 });
 UserSchema.index({ email: 1 });
 UserSchema.index({ isFlatmateSearchable: 1 });
 

@@ -22,7 +22,7 @@ interface ProfileFormProps {
 export default function ProfileForm({ initialUser }: ProfileFormProps) {
   const [name, setName] = useState(initialUser.name || "");
   const [email, setEmail] = useState(initialUser.email || "");
-  const [age, setAge] = useState(initialUser.age?.toString() || "");
+  const [age, setAge] = useState(initialUser.age ? initialUser.age.toString() : "");
   const [gender, setGender] = useState(initialUser.gender || "male");
   const [profession, setProfession] = useState(initialUser.profession || "");
   const [bio, setBio] = useState(initialUser.bio || "");
@@ -123,6 +123,7 @@ export default function ProfileForm({ initialUser }: ProfileFormProps) {
             type="number"
             value={age}
             onChange={e => setAge(e.target.value)}
+            placeholder="e.g. 24"
             className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary font-sans"
           />
         </div>
