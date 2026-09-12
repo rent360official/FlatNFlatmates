@@ -1,4 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import '@/models/User';
+import '@/models/City';
+import '@/models/Locality';
 
 export interface IPropertyImage {
   _id?: mongoose.Types.ObjectId;

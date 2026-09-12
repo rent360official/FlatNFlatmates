@@ -1,4 +1,8 @@
 import mongoose from 'mongoose';
+import '@/models/City';
+import '@/models/Locality';
+import '@/models/User';
+import '@/models/Property';
 
 /**
  * Global is used here to maintain a cached connection across hot reloads

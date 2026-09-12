@@ -57,7 +57,7 @@ Resources:
     Properties:
       CodeUri: processVideo/
       Handler: index.handler
-      MemorySize: 4096
+      MemorySize: 3008
       EphemeralStorage:
         Size: 10240 # 10GB /tmp for up to 5GB video transcode
       Policies:
