@@ -46,9 +46,9 @@ export default function CallButton({ propertyId }: { propertyId: string }) {
         <div className="space-y-3">
           {/* Consent Checkbox */}
           <label className="flex items-start space-x-2 p-3 bg-slate-50 border rounded-xl cursor-pointer hover:bg-slate-100/50 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={consented} 
+            <input
+              type="checkbox"
+              checked={consented}
               onChange={(e) => setConsented(e.target.checked)}
               className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
             />

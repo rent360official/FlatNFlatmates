@@ -29,12 +29,23 @@ async function uploadFileToS3(bucket, key, filePath, contentType) {
   await s3Client.send(command);
 }
 
-// Find ffmpeg binary path (from npm static package, direct path, Lambda layer, or system PATH)
+// Find ffmpeg binary path (from direct directory, static package, Lambda layer, or system PATH)
 function getBinaryPath(binaryName) {
-  const localStatic = path.join(__dirname, "node_modules", "ffmpeg-static", "ffmpeg");
-  if (fs.existsSync(localStatic)) {
-    try { fs.chmodSync(localStatic, 0o755); } catch (e) {}
-    return localStatic;
+  const possiblePaths = [
+    path.join(__dirname, "ffmpeg"),
+    path.join(__dirname, "node_modules", "ffmpeg-static", "ffmpeg"),
+    `/opt/bin/${binaryName}`,
+    `/opt/${binaryName}`,
+    `/var/task/ffmpeg`,
+    `/var/task/node_modules/ffmpeg-static/ffmpeg`
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try { fs.chmodSync(p, 0o755); } catch (e) {}
+      console.log(`Found ${binaryName} at: ${p}`);
+      return p;
+    }
   }
 
   try {
@@ -42,15 +53,13 @@ function getBinaryPath(binaryName) {
       const ffmpegStatic = require("ffmpeg-static");
       if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
         try { fs.chmodSync(ffmpegStatic, 0o755); } catch (e) {}
+        console.log(`Found ffmpeg via require('ffmpeg-static') at: ${ffmpegStatic}`);
         return ffmpegStatic;
       }
     }
   } catch (e) {}
 
-  const layerPath = `/opt/bin/${binaryName}`;
-  const localLayerPath = `/opt/${binaryName}`;
-  if (fs.existsSync(layerPath)) return layerPath;
-  if (fs.existsSync(localLayerPath)) return localLayerPath;
+  console.warn(`Could not find local ${binaryName} binary, falling back to system PATH`);
   return binaryName;
 }
 
