@@ -56,9 +56,9 @@ Resources:
     Properties:
       CodeUri: ProcessVideoFunction
       Handler: index.handler
-      MemorySize: 2048
+      MemorySize: 4096
       EphemeralStorage:
-        Size: 3072
+        Size: 10240
       Policies:
       - S3CrudPolicy:
           BucketName:

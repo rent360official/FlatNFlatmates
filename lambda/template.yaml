@@ -57,9 +57,9 @@ Resources:
     Properties:
       CodeUri: processVideo/
       Handler: index.handler
-      MemorySize: 2048
+      MemorySize: 4096
       EphemeralStorage:
-        Size: 3072 # 3GB /tmp for video transcode
+        Size: 10240 # 10GB /tmp for up to 5GB video transcode
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ExistingBucketName

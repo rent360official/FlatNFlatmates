@@ -100,16 +100,16 @@ exports.handler = async (event) => {
       console.log(`Downloading s3://${bucket}/${rawKey} to ${tmpInput}`);
       await downloadS3ToFile(bucket, rawKey, tmpInput);
 
-      // 2. Check video duration <= 300s (5 minutes)
+      // 2. Check video duration <= 600s (10 minutes)
       const durationSeconds = await getVideoDuration(ffmpegPath, tmpInput);
       console.log(`Video duration: ${durationSeconds} seconds`);
 
-      if (durationSeconds > 300) {
-        throw new Error(`Video exceeds maximum 5 minute limit (${durationSeconds} seconds).`);
+      if (durationSeconds > 600) {
+        throw new Error(`Video exceeds maximum 10 minute limit (${durationSeconds} seconds).`);
       }
 
       // 3. Transcode to 720p MP4 (H.264, AAC, 2500k maxrate, faststart for instant web streaming)
-      const transcodeCmd = `"${ffmpegPath}" -y -i "${tmpInput}" -vf "scale=-2:720" -c:v libx264 -preset medium -crf 23 -maxrate 2500k -bufsize 5000k -c:a aac -b:a 128k -movflags +faststart "${tmpOutput}"`;
+      const transcodeCmd = `"${ffmpegPath}" -y -i "${tmpInput}" -vf "scale=-2:720" -c:v libx264 -preset fast -crf 23 -maxrate 2500k -bufsize 5000k -c:a aac -b:a 128k -movflags +faststart "${tmpOutput}"`;
       console.log(`Running transcode: ${transcodeCmd}`);
       await execPromise(transcodeCmd);
 

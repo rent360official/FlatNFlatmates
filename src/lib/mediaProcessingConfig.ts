@@ -1,11 +1,11 @@
 import { getS3Config } from "@/lib/s3";
 
 export const MEDIA_LIMITS = {
-  MAX_IMAGE_SIZE_BYTES: 15 * 1024 * 1024, // 15MB
-  MAX_VIDEO_SIZE_BYTES: 300 * 1024 * 1024, // 300MB
-  MAX_VIDEO_DURATION_SECONDS: 300, // 5 minutes
+  MAX_IMAGE_SIZE_BYTES: 25 * 1024 * 1024, // 25MB
+  MAX_VIDEO_SIZE_BYTES: 5 * 1024 * 1024 * 1024, // 5GB (5120MB)
+  MAX_VIDEO_DURATION_SECONDS: 600, // 10 minutes
   ALLOWED_IMAGE_EXTENSIONS: [".jpg", ".jpeg", ".png", ".webp"],
-  ALLOWED_VIDEO_EXTENSIONS: [".mp4", ".mov"],
+  ALLOWED_VIDEO_EXTENSIONS: [".mp4", ".mov", ".webm"],
 };
 
 export const INTERNAL_MEDIA_SECRET_HEADER = "x-internal-media-secret";

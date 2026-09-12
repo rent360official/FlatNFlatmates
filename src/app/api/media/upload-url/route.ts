@@ -97,8 +97,8 @@ export async function POST(req: Request) {
       ContentType: fileType,
     });
 
-    // Generate presigned PUT URL valid for 10 minutes
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
+    // Generate presigned PUT URL valid for 1 hour (supports up to 5GB video uploads)
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
     const publicUrl = `https://${config.bucketName}.s3.${config.region}.amazonaws.com/${mediaPaths.rawKey}`;
 
     return NextResponse.json({

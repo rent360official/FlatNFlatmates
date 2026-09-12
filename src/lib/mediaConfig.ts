@@ -4,15 +4,17 @@ import FeatureFlag from "@/models/FeatureFlag";
 export interface MediaUploadConfig {
   maxPropertyVideos: number;
   maxVideoSizeMb: number;
+  maxVideoDurationMinutes: number;
   maxPropertyImages: number;
   maxImageSizeMb: number;
 }
 
 export const DEFAULT_MEDIA_CONFIG: MediaUploadConfig = {
   maxPropertyVideos: 5,
-  maxVideoSizeMb: 100,
+  maxVideoSizeMb: 5120, // 5GB
+  maxVideoDurationMinutes: 10, // 10 minutes
   maxPropertyImages: 10,
-  maxImageSizeMb: 10,
+  maxImageSizeMb: 25, // 25MB
 };
 
 /**
@@ -27,6 +29,7 @@ export async function getMediaUploadConfig(): Promise<MediaUploadConfig> {
         $in: [
           "max_property_videos",
           "max_video_size_mb",
+          "max_video_duration_minutes",
           "max_property_images",
           "max_image_size_mb",
         ],
@@ -40,6 +43,7 @@ export async function getMediaUploadConfig(): Promise<MediaUploadConfig> {
       if (!isNaN(val) && val > 0) {
         if (flag.key === "max_property_videos") config.maxPropertyVideos = val;
         if (flag.key === "max_video_size_mb") config.maxVideoSizeMb = val;
+        if (flag.key === "max_video_duration_minutes") config.maxVideoDurationMinutes = val;
         if (flag.key === "max_property_images") config.maxPropertyImages = val;
         if (flag.key === "max_image_size_mb") config.maxImageSizeMb = val;
       }

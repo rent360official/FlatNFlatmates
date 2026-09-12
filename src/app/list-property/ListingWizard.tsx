@@ -23,9 +23,10 @@ export default function ListingWizard({
   localities,
   mediaConfig = {
     maxPropertyVideos: 5,
-    maxVideoSizeMb: 100,
+    maxVideoSizeMb: 5120,
+    maxVideoDurationMinutes: 10,
     maxPropertyImages: 10,
-    maxImageSizeMb: 10,
+    maxImageSizeMb: 25,
   },
   initialProperty,
   approveOnSave = false,
@@ -417,10 +418,11 @@ export default function ListingWizard({
         continue;
       }
 
-      // Check duration <= 300s (5 minutes)
+      // Check duration <= 10 minutes (600s, configurable via admin)
+      const maxDurationMin = mediaConfig.maxVideoDurationMinutes || 10;
       const durationSeconds = await checkVideoDuration(file);
-      if (durationSeconds > 300) {
-        setGlobalError(`"${file.name}" exceeds the maximum duration limit of 5 minutes (${Math.round(durationSeconds)}s). Videos must be 5 minutes or shorter.`);
+      if (durationSeconds > maxDurationMin * 60) {
+        setGlobalError(`"${file.name}" exceeds the maximum duration limit of ${maxDurationMin} minutes (${Math.round(durationSeconds)}s). Videos must be ${maxDurationMin} minutes or shorter.`);
         continue;
       }
 
@@ -474,12 +476,14 @@ export default function ListingWizard({
           xhr.send(file);
         });
 
+        const previewUrl = URL.createObjectURL(file);
         newVideos.push({
-          url: publicUrl,
+          url: processedUrl || publicUrl,
+          previewUrl,
           fileName: file.name,
           sizeBytes: file.size,
           rawKey,
-          status: "processing",
+          status: "ready",
           processedUrl,
           thumbnailUrl,
           durationSeconds: Math.round(durationSeconds),
@@ -1153,29 +1157,24 @@ export default function ListingWizard({
                   <Film className="h-3.5 w-3.5 mr-1 text-brand-primary" />
                   Tour & Walkthrough Videos ({media.videos.length}/{mediaConfig.maxPropertyVideos})
                 </label>
-                <span className="text-[10px] text-slate-400">Max {mediaConfig.maxVideoSizeMb} MB each</span>
+                <span className="text-[10px] text-slate-400">Max {mediaConfig.maxVideoDurationMinutes || 10} mins duration</span>
               </div>
 
               {/* Uploaded Videos List */}
               {media.videos.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   {media.videos.map((vid, idx) => (
-                    <div key={idx} className="border border-slate-200 bg-slate-50 rounded-xl p-3 flex flex-col justify-between space-y-2 animate-in fade-in duration-200 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center space-x-2 min-w-0">
-                          <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary flex-shrink-0">
-                            <Film className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="block font-bold text-slate-800 text-xs truncate" title={vid.fileName}>
-                              {vid.fileName || `Video ${idx + 1}`}
+                    <div key={idx} className="border rounded-xl p-3 bg-white space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center space-x-2 truncate">
+                          <Film className="h-4 w-4 text-brand-primary flex-shrink-0" />
+                          <span className="font-medium text-slate-800 truncate">{vid.fileName}</span>
+                          {((vid as any).sizeBytes || (vid as any).durationSeconds) && (
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              ({(vid as any).sizeBytes ? `${Math.round((vid as any).sizeBytes / (1024 * 1024))} MB` : ""}
+                              {(vid as any).durationSeconds ? ` • ${Math.floor((vid as any).durationSeconds / 60)}m ${(vid as any).durationSeconds % 60}s` : ""})
                             </span>
-                            {vid.sizeBytes && (
-                              <span className="text-[10px] text-slate-400 font-mono font-medium">
-                                {formatFileSize(vid.sizeBytes)}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
 
                         <button
@@ -1193,7 +1192,7 @@ export default function ListingWizard({
 
                       {/* Video Player Preview */}
                       <video
-                        src={vid.url}
+                        src={(vid as any).previewUrl || vid.url}
                         controls
                         preload="metadata"
                         className="w-full max-h-40 rounded-lg bg-black object-contain"
@@ -1208,7 +1207,7 @@ export default function ListingWizard({
                 <div className="border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-xl p-5 text-center cursor-pointer hover:border-brand-primary/60 transition-all relative">
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/mp4,video/webm,video/quicktime,video/*"
                     multiple
                     onChange={handleVideoUpload}
                     disabled={isUploading}
@@ -1216,8 +1215,8 @@ export default function ListingWizard({
                   />
                   <div className="flex flex-col items-center justify-center space-y-1">
                     <UploadCloud className="h-7 w-7 text-slate-400" />
-                    <span className="text-xs font-semibold text-slate-650">Select or drag videos to upload</span>
-                    <span className="text-[10px] text-slate-450">Supported formats: MP4, WebM (Max {mediaConfig.maxVideoSizeMb} MB per video, up to {mediaConfig.maxPropertyVideos} videos).</span>
+                    <span className="text-xs font-semibold text-slate-650">Select or drag walkthrough videos to upload</span>
+                    <span className="text-[10px] text-slate-450">Supported formats: MP4, MOV, WebM (Max {mediaConfig.maxVideoDurationMinutes || 10} minutes duration, up to {mediaConfig.maxPropertyVideos} videos).</span>
                   </div>
                 </div>
               ) : (
