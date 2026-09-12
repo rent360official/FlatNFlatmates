@@ -2,11 +2,13 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Property from "@/models/Property";
 import Locality from "@/models/Locality";
-import CallLog from "@/models/CallLog";
+import PropertyInquiry from "@/models/PropertyInquiry";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { isFeatureActive } from "@/lib/featureAccess";
 import PropertyCardActions from "./PropertyCardActions";
-import { Eye, PhoneCall, Calendar, Activity, Home, ArrowUpRight, Image as ImageIcon } from "lucide-react";
+import PropertyInquiriesStats from "./PropertyInquiriesStats";
+import { Eye, Calendar, Activity, Home, ArrowUpRight, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
@@ -19,10 +21,11 @@ export default async function MyPropertiesPage() {
   // Ensure referenced models are registered in Mongoose
   const _User = User;
   const _Locality = Locality;
-  const _CallLog = CallLog;
+  const _PropertyInquiry = PropertyInquiry;
   const _Property = Property;
 
   const ownerId = (session?.user as any)?.id;
+  const userRole = (session?.user as any)?.role;
 
   if (!ownerId) {
     return (
@@ -35,6 +38,9 @@ export default async function MyPropertiesPage() {
       </div>
     );
   }
+
+  // Check Feature Flag for Interest SMS
+  const isInterestSmsEnabled = await isFeatureActive('property_interest_sms', userRole);
 
   let properties: any[] = [];
   try {
@@ -49,24 +55,48 @@ export default async function MyPropertiesPage() {
     console.error("Error fetching owner properties:", err);
   }
 
-  // Aggregate real call inquiries per property for this user's listings
+  // Aggregate real inquiries (separated strictly by inquiryType: 'call' vs 'sms_interested')
   const callCountsMap: Record<string, number> = {};
+  const interestCountsMap: Record<string, number> = {};
   const propertyIds = properties.map((p: any) => p._id).filter(Boolean);
   
   if (propertyIds.length > 0) {
     try {
-      const callLogsAggregation = await CallLog.aggregate([
+      const inquiriesAggregation = await PropertyInquiry.aggregate([
         { $match: { propertyId: { $in: propertyIds } } },
-        { $group: { _id: '$propertyId', callCount: { $sum: 1 } } },
+        {
+          $group: {
+            _id: {
+              propertyId: '$propertyId',
+              inquiryType: '$inquiryType',
+              userKey: { $ifNull: ['$userId', '$userPhone'] },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              propertyId: '$_id.propertyId',
+              inquiryType: '$_id.inquiryType',
+            },
+            count: { $sum: 1 },
+          },
+        },
       ]);
 
-      callLogsAggregation.forEach((item: any) => {
-        if (item._id) {
-          callCountsMap[item._id.toString()] = item.callCount;
+      inquiriesAggregation.forEach((item: any) => {
+        const pid = item._id?.propertyId?.toString();
+        const type = item._id?.inquiryType;
+        if (pid) {
+          if (type === 'call') {
+            callCountsMap[pid] = item.count;
+          } else if (type === 'sms_interested') {
+            interestCountsMap[pid] = item.count;
+          }
         }
       });
     } catch (e) {
-      console.error("Error aggregating call logs:", e);
+      console.error("Error aggregating property inquiries:", e);
     }
   }
 
@@ -102,6 +132,8 @@ export default async function MyPropertiesPage() {
         return <span className="bg-emerald-50 text-brand-primary px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 uppercase">Active</span>;
       case 'paused':
         return <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-200 uppercase">Paused</span>;
+      case 'pending_owner_approval':
+        return <span className="bg-violet-50 text-violet-700 px-2 py-0.5 rounded text-[10px] font-bold border border-violet-200 uppercase">Pending Approval</span>;
       default:
         return <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold border uppercase">{status || 'Draft'}</span>;
     }
@@ -140,6 +172,7 @@ export default async function MyPropertiesPage() {
             const days = getDaysLive(prop.createdAt);
             const views = Number(prop.viewsCount) || 0;
             const calls = propId ? (callCountsMap[propId] || 0) : 0;
+            const interests = propId ? (interestCountsMap[propId] || 0) : 0;
 
             const locId = prop.localityId?._id ? prop.localityId._id.toString() : (prop.localityId?.toString() || '');
             const localityStats = locId ? localityAveragesMap[locId] : null;
@@ -215,7 +248,7 @@ export default async function MyPropertiesPage() {
                 </div>
 
                 {/* Real Performance Stats Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className={`grid grid-cols-2 ${isInterestSmsEnabled ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100`}>
                   <div className="flex items-center space-x-2.5">
                     <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
                       <Eye className="h-4.5 w-4.5" />
@@ -226,15 +259,14 @@ export default async function MyPropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2.5">
-                    <div className="p-2 bg-emerald-50 text-brand-primary rounded-lg">
-                      <PhoneCall className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] text-slate-400 font-medium uppercase tracking-wider">Call Inquiries</span>
-                      <span className="text-sm font-bold text-slate-800">{calls}</span>
-                    </div>
-                  </div>
+                  {/* Interactive Call Inquiries & Interests Shared with seeker list popup */}
+                  <PropertyInquiriesStats
+                    propertyId={propId}
+                    propertyTitle={prop.title || prop.bhkConfig || "Property"}
+                    callCount={calls}
+                    interestCount={interests}
+                    showInterestStats={isInterestSmsEnabled}
+                  />
 
                   <div className="flex items-center space-x-2.5">
                     <div className="p-2 bg-sky-50 text-sky-600 rounded-lg">

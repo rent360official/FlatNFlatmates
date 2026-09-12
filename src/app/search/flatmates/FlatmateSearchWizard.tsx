@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   SlidersHorizontal, Search, Navigation,
@@ -9,6 +9,7 @@ import {
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
 import { mapStyles } from "@/lib/mapStyles";
 import { POPULAR_LOCALITIES_DATA } from "../flats/SearchWizard";
+import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
 
 interface POI {
   _id: string;
@@ -18,7 +19,13 @@ interface POI {
   lng: number;
 }
 
-export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
+export default function FlatmateSearchWizard({
+  pois,
+  facebookGroups = [],
+}: {
+  pois: POI[];
+  facebookGroups?: FacebookGroupData[];
+}) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [seekers, setSeekers] = useState<any[]>([]);
@@ -1160,7 +1167,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
               <div className={`grid gap-5 ${
                 searchIntent === "ROOMMATE_WITH_FLAT" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
               }`}>
-                {seekers.map((seeker: any) => {
+                {seekers.map((seeker: any, index: number) => {
                   const isHovered = hoveredSeekerId === seeker._id;
 
                   // Extract habits for chips
@@ -1180,16 +1187,16 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                       "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80";
 
                     return (
-                      <div
-                        key={seeker._id}
-                        onMouseEnter={() => setHoveredSeekerId(seeker._id)}
-                        onMouseLeave={() => setHoveredSeekerId(null)}
-                        className={`bg-white border rounded-2xl shadow-sm flex flex-col justify-between overflow-hidden transition-all duration-150 font-sans ${
-                          isHovered
-                            ? "border-brand-primary/60 ring-2 ring-brand-primary/10"
-                            : "hover:border-slate-350"
-                        }`}
-                      >
+                      <React.Fragment key={seeker._id}>
+                        <div
+                          onMouseEnter={() => setHoveredSeekerId(seeker._id)}
+                          onMouseLeave={() => setHoveredSeekerId(null)}
+                          className={`bg-white border rounded-2xl shadow-sm flex flex-col justify-between overflow-hidden transition-all duration-150 font-sans ${
+                            isHovered
+                              ? "border-brand-primary/60 ring-2 ring-brand-primary/10"
+                              : "hover:border-slate-350"
+                          }`}
+                        >
                         {/* Property Image on top */}
                         <div className="h-44 w-full bg-slate-100 relative">
                           <img
@@ -1225,7 +1232,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                           {seeker.nearbyAmenities && (
                             <div className="flex flex-wrap gap-1">
                               {seeker.nearbyAmenities.gyms > 0 && (
-                                <span className="bg-bg-status-successBg/15 text-brand-primary text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-100">
+                                <span className="bg-emerald-50 text-emerald-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-200">
                                   🏋️ Gym (
                                   {seeker.nearbyAmenities.gymsMinDist
                                     ? `${seeker.nearbyAmenities.gymsMinDist} km`
@@ -1316,20 +1323,30 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                           </div>
                         </div>
                       </div>
+                      {/* Repeating Facebook Community CTA every 8 items OR at end of results */}
+                      {((index + 1) % 8 === 0 || index + 1 === seekers.length) && (
+                        <FacebookGroupCTA
+                          key={`fb-cta-${index}`}
+                          groups={facebookGroups}
+                          category="flatmates"
+                          isBlank={false}
+                        />
+                      )}
+                    </React.Fragment>
                     );
                   } else {
                     // FLATMATE-FIRST CARD DESIGN (Flow 2)
                     return (
-                      <div
-                        key={seeker._id}
-                        onMouseEnter={() => setHoveredSeekerId(seeker._id)}
-                        onMouseLeave={() => setHoveredSeekerId(null)}
-                        className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col justify-between transition-all duration-150 font-sans ${
-                          isHovered
-                            ? "border-brand-primary/60 ring-2 ring-brand-primary/10"
-                            : "hover:border-slate-350"
-                        }`}
-                      >
+                      <React.Fragment key={seeker._id}>
+                        <div
+                          onMouseEnter={() => setHoveredSeekerId(seeker._id)}
+                          onMouseLeave={() => setHoveredSeekerId(null)}
+                          className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col justify-between transition-all duration-150 font-sans ${
+                            isHovered
+                              ? "border-brand-primary/60 ring-2 ring-brand-primary/10"
+                              : "hover:border-slate-350"
+                          }`}
+                        >
                         <div className="space-y-3.5">
                           {/* Card Header (Photo/Name/Match) */}
                           <div className="flex items-start justify-between">
@@ -1405,7 +1422,7 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                           {/* Lifestyle Badges */}
                           <div className="flex flex-wrap gap-1 pt-1">
                             {cleanlinessTag && (
-                              <span className="text-[8px] bg-bg-status-successBg/15 text-brand-primary border border-emerald-100 px-2 py-0.5 rounded font-bold uppercase">
+                              <span className="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">
                                 Clean: {cleanlinessTag}
                               </span>
                             )}
@@ -1437,14 +1454,26 @@ export default function FlatmateSearchWizard({ pois }: { pois: POI[] }) {
                           </Link>
                         </div>
                       </div>
+                      {/* Repeating Facebook Community CTA every 8 items OR at end of results */}
+                      {((index + 1) % 8 === 0 || index + 1 === seekers.length) && (
+                        <FacebookGroupCTA
+                          key={`fb-cta-${index}`}
+                          groups={facebookGroups}
+                          category="flatmates"
+                          isBlank={false}
+                        />
+                      )}
+                    </React.Fragment>
                     );
                   }
                 })}
               </div>
             ) : (
-              <div className="text-center py-16 border border-dashed rounded-xl bg-slate-50 text-slate-450 text-xs font-sans">
-                No active seekers found matching your compatibility criteria. Try broadening your
-                filters.
+              <div className="space-y-4">
+                <div className="text-center py-12 border border-dashed rounded-xl bg-slate-50 text-slate-450 text-xs font-sans">
+                  No active seekers found matching your compatibility criteria. Try broadening your filters.
+                </div>
+                <FacebookGroupCTA groups={facebookGroups} category="flatmates" isBlank={true} />
               </div>
             )}
           </div>

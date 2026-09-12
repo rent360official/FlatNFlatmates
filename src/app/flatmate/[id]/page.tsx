@@ -7,6 +7,8 @@ import Property from "@/models/Property";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CallButton from "./CallButton";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 import {
   ArrowLeft, Check, Sparkles, Navigation, User as UserIcon,
   Heart, ShieldCheck, MapPin, Smile, Home, DollarSign
@@ -16,6 +18,7 @@ import React from "react";
 export const dynamic = 'force-dynamic';
 
 export default async function FlatmateDetailPage({ params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
   await dbConnect();
   // Prevent Next.js tree-shaking of models to ensure registration
   const _Locality = Locality;
@@ -251,15 +254,26 @@ export default async function FlatmateDetailPage({ params }: { params: { id: str
               </span>
               <div className="flex items-baseline space-x-1.5">
                 <span className="text-2xl font-extrabold text-slate-900">
-                  ₹{listing?.budgetMin ? listing.budgetMin.toLocaleString() : "5,000"} - ₹{listing?.budgetMax ? listing.budgetMax.toLocaleString() : "20,000"}
+                  {listing?.budgetMin && listing?.budgetMax
+                    ? `₹${listing.budgetMin.toLocaleString()} - ₹${listing.budgetMax.toLocaleString()}`
+                    : listing?.budgetMax
+                    ? `Up to ₹${listing.budgetMax.toLocaleString()}`
+                    : listing?.budgetMin
+                    ? `From ₹${listing.budgetMin.toLocaleString()}`
+                    : "Flexible"}
                 </span>
                 <span className="text-xs text-slate-500">/mo</span>
               </div>
               <p className="text-[10px] text-slate-400 leading-normal">Proposed share of monthly rental budget.</p>
             </div>
 
-            {/* Calling Trigger */}
-            <CallButton calleeUserId={user._id.toString()} calleeName={user.name || "Seeker"} />
+            {/* Calling & WhatsApp Contact */}
+            <CallButton
+              calleePhone={user.phone}
+              calleeName={user.name || "Seeker"}
+              isLoggedIn={Boolean(session?.user)}
+              flatmateId={params.id}
+            />
 
             {/* Attached Flat Card */}
             {listing?.propertyId && (
@@ -295,7 +309,7 @@ export default async function FlatmateDetailPage({ params }: { params: { id: str
             {/* Safety Disclaimer */}
             <div className="border-t pt-4">
               <span className="block text-[9px] text-slate-400 leading-relaxed">
-                FlatNFlatmates masked proxy calls protect user phone numbers. Make sure to discuss housing arrangements, verification checklists, and visit properties in person before signing agreements.
+                Connect directly with verified flatmates. Always discuss lifestyle preferences, shared bills, and visit properties in person before finalizing agreements.
               </span>
             </div>
 

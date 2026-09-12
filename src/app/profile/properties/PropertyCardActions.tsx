@@ -55,13 +55,18 @@ export default function PropertyCardActions({ propertyId, status }: { propertyId
         className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors border ${
           status === 'active' 
             ? "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700" 
-            : "border-emerald-200 bg-status-successBg/15 hover:bg-emerald-100 text-brand-primary"
+            : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
         } disabled:opacity-50`}
       >
         {status === 'active' ? (
           <>
             <Pause className="h-3.5 w-3.5" />
             <span>Pause Listing</span>
+          </>
+        ) : status === 'pending_owner_approval' ? (
+          <>
+            <Play className="h-3.5 w-3.5" />
+            <span>Approve & Activate</span>
           </>
         ) : (
           <>

@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IAuditLog extends Document {
   actorId: mongoose.Types.ObjectId;
   action: string;
-  entityType: 'User' | 'Property' | 'VibeUpgradeRequest' | 'City' | 'Locality' | 'PointOfInterest' | 'FeatureFlag';
+  entityType: 'User' | 'Property' | 'VibeUpgradeRequest' | 'City' | 'Locality' | 'PointOfInterest' | 'FeatureFlag' | 'FacebookGroup';
   entityId: mongoose.Types.ObjectId;
   beforeState?: Schema.Types.Mixed;
   afterState?: Schema.Types.Mixed;
@@ -17,7 +17,7 @@ const AuditLogSchema: Schema<IAuditLog> = new Schema(
     entityType: {
       type: String,
       required: true,
-      enum: ['User', 'Property', 'VibeUpgradeRequest', 'City', 'Locality', 'PointOfInterest', 'FeatureFlag'],
+      enum: ['User', 'Property', 'VibeUpgradeRequest', 'City', 'Locality', 'PointOfInterest', 'FeatureFlag', 'FacebookGroup'],
     },
     entityId: { type: Schema.Types.ObjectId, required: true },
     beforeState: { type: Schema.Types.Mixed },

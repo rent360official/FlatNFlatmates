@@ -4,7 +4,7 @@ import AuditLog from "@/models/AuditLog";
 interface AuditParams {
   actorId: string;
   action: string;
-  entityType: 'User' | 'Property' | 'VibeUpgradeRequest' | 'City' | 'Locality' | 'PointOfInterest' | 'FeatureFlag';
+  entityType: 'User' | 'Property' | 'VibeUpgradeRequest' | 'City' | 'Locality' | 'PointOfInterest' | 'FeatureFlag' | 'FacebookGroup';
   entityId: string | any;
   beforeState?: any;
   afterState?: any;

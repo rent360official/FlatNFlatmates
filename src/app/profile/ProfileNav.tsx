@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Users, Home, Shield, LogOut } from "lucide-react";
+import { User, Users, Home, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 export default function ProfileNav({ name }: { name: string }) {
@@ -12,7 +12,6 @@ export default function ProfileNav({ name }: { name: string }) {
     { name: "Personal Info", href: "/profile", icon: User },
     { name: "Roommate Settings", href: "/profile/roommate", icon: Users },
     { name: "My Properties & Analytics", href: "/profile/properties", icon: Home },
-    { name: "Document Vault", href: "/profile/documents", icon: Shield },
   ];
 
   const isActive = (href: string) => {

@@ -242,7 +242,7 @@ export default function VibeUpgradeCatalog({
 
             {checkoutStep === 'success' && (
               <div className="text-center space-y-6 py-4 animate-in fade-in duration-200">
-                <div className="h-12 w-12 rounded-full bg-status-successBg/15 border border-emerald-200 text-brand-primary flex items-center justify-center mx-auto shadow-sm">
+                <div className="h-12 w-12 rounded-full bg-emerald-50 border border-emerald-200 text-brand-primary flex items-center justify-center mx-auto shadow-sm">
                   <ShieldCheck className="h-6 w-6" />
                 </div>
 

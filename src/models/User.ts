@@ -16,6 +16,10 @@ export interface IUser extends Document {
   targetLocations: mongoose.Types.ObjectId[];
   role: 'user' | 'owner' | 'super_admin' | 'ops_admin' | 'support_agent' | 'moderator' | 'tester';
   verificationStatus: 'pending' | 'verified' | 'rejected';
+  rejectionReason?: string;
+  rejectedAt?: Date;
+  reverificationRequestMessage?: string;
+  reverificationRequestedAt?: Date;
   otp?: {
     code: string;
     expiresAt: Date;
@@ -49,6 +53,10 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: ['pending', 'verified', 'rejected'],
       default: 'pending',
     },
+    rejectionReason: { type: String },
+    rejectedAt: { type: Date },
+    reverificationRequestMessage: { type: String },
+    reverificationRequestedAt: { type: Date },
     otp: {
       code: { type: String },
       expiresAt: { type: Date },

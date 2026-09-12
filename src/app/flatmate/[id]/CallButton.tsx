@@ -1,86 +1,72 @@
 'use client';
 
-import { useState, useTransition } from "react";
-import { PhoneCall, ShieldCheck, Activity } from "lucide-react";
+import React from "react";
+import { Phone, MessageCircle } from "lucide-react";
+import { formatMsg91Phone, formatE164Phone } from "@/lib/phoneUtils";
 
-export default function CallButton({ calleeUserId, calleeName }: { calleeUserId: string; calleeName: string }) {
-  const [callInitiated, setCallInitiated] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  const [consented, setConsented] = useState(false);
-
+export default function FlatmateContactActions({
+  calleePhone,
+  calleeName,
+  isLoggedIn = false,
+  flatmateId,
+}: {
+  calleePhone?: string;
+  calleeName: string;
+  isLoggedIn?: boolean;
+  flatmateId?: string;
+}) {
   const handleCall = () => {
-    if (!consented) {
-      alert("Please consent to the recording notice to make a proxy call.");
+    if (!isLoggedIn) {
+      alert("Please sign in to call this flatmate seeker.");
+      window.location.href = `/login?callbackUrl=${flatmateId ? `/flatmate/${flatmateId}` : '/search/flatmates'}`;
       return;
     }
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/calls/bridge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ calleeUserId }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setCallInitiated(true);
-        } else {
-          // If user is not logged in, redirect them
-          if (res.status === 401) {
-            alert("Please log in to contact flatmate seekers.");
-            window.location.href = `/login?callbackUrl=/flatmate/${calleeUserId}`;
-          } else {
-            alert(data.error || "Failed to initiate call");
-          }
-        }
-      } catch (e) {
-        console.error("Failed to initiate call proxy bridge", e);
-        alert("Failed to initiate secure proxy call.");
-      }
-    });
+    if (!calleePhone) {
+      alert("Contact number is not available.");
+      return;
+    }
+    const formatted = formatE164Phone(calleePhone);
+    window.location.href = `tel:${formatted}`;
+  };
+
+  const handleWhatsApp = () => {
+    if (!isLoggedIn) {
+      alert("Please sign in to message this flatmate seeker on WhatsApp.");
+      window.location.href = `/login?callbackUrl=${flatmateId ? `/flatmate/${flatmateId}` : '/search/flatmates'}`;
+      return;
+    }
+    if (!calleePhone) {
+      alert("Contact number is not available.");
+      return;
+    }
+    const formatted = formatMsg91Phone(calleePhone);
+    const msg = encodeURIComponent(`Hi ${calleeName}, I saw your flatmate profile on FlatNFlatmates. Wanted to connect regarding sharing a flat in Pune!`);
+    window.open(`https://wa.me/${formatted}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   return (
-    <div className="space-y-4">
-      {!callInitiated ? (
-        <div className="space-y-3">
-          {/* Consent Checkbox */}
-          <label className="flex items-start space-x-2 p-3 bg-slate-50 border rounded-xl cursor-pointer hover:bg-slate-100/50 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={consented} 
-              onChange={(e) => setConsented(e.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
-            />
-            <span className="text-[10px] text-slate-550 leading-relaxed font-sans">
-              I consent to the recording of this call in compliance with Indian telecom regulations. I agree to share call status details with the platform.
-            </span>
-          </label>
+    <div className="space-y-2.5 font-sans">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={handleCall}
+          className="flex items-center justify-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-sm transition-all transform hover:-translate-y-0.5 cursor-pointer"
+          title={`Call ${calleeName}`}
+        >
+          <Phone className="h-4 w-4 text-emerald-400" />
+          <span>Call</span>
+        </button>
 
-          <button
-            onClick={handleCall}
-            disabled={isPending || !consented}
-            className="w-full bg-brand-primary hover:bg-brand-primaryHover disabled:bg-slate-100 disabled:text-slate-400 disabled:border disabled:cursor-not-allowed text-white rounded-xl py-3 px-4 text-xs font-bold transition-all flex items-center justify-center space-x-2 shadow-sm"
-          >
-            <PhoneCall className="h-4.5 w-4.5" />
-            <span>{isPending ? "Connecting Masked Proxy..." : `Call ${calleeName} Securely`}</span>
-          </button>
-        </div>
-      ) : (
-        <div className="bg-status-successBg/15 border border-emerald-100 rounded-xl p-4 space-y-2 animate-in fade-in duration-200">
-          <div className="flex items-center space-x-2 text-emerald-800 font-bold text-xs">
-            <ShieldCheck className="h-4.5 w-4.5 text-brand-primary" />
-            <span>Proxy Bridge Active</span>
-          </div>
-          <p className="text-[11px] text-brand-primary leading-normal">
-            Your call is masked to preserve privacy. Calling via proxy line: <code className="bg-emerald-100 font-bold px-1 py-0.5 rounded">020-6721-9988</code>.
-          </p>
-          <span className="block text-[9px] text-slate-400 mt-1 flex items-center">
-            <Activity className="h-3 w-3 mr-1 text-slate-400 animate-pulse" />
-            Connection bridge is logged for safety.
-          </span>
-        </div>
-      )}
+        <button
+          type="button"
+          onClick={handleWhatsApp}
+          className="flex items-center justify-center space-x-2 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3 px-4 rounded-xl text-xs shadow-sm transition-all transform hover:-translate-y-0.5 cursor-pointer"
+          title={`Chat with ${calleeName} on WhatsApp`}
+        >
+          <MessageCircle className="h-4 w-4 text-white" />
+          <span>WhatsApp</span>
+        </button>
+      </div>
     </div>
   );
 }

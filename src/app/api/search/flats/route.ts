@@ -11,6 +11,7 @@ import User from "@/models/User";
 import FeatureFlag from "@/models/FeatureFlag";
 import "@/models/Locality"; // ensure Locality schema is registered for .populate()
 import { NextRequest, NextResponse } from "next/server";
+import { recordFlatSearchDemand } from "@/lib/demandTelemetry";
 
 // Haversine distance calculator in km
 function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -480,6 +481,36 @@ export async function GET(req: NextRequest) {
       if (!a.inProximity && b.inProximity) return 1;
       return b.rankingScore - a.rankingScore;
     });
+
+    // Record Demand Telemetry asynchronously
+    const searchAreaLabel = searchParams.get("searchAreaLabel") || searchParams.get("locality") || inputPois[0]?.label;
+    recordFlatSearchDemand(
+      {
+        searchAreaLabel,
+        searchAreaLat: searchAreaLat ? parseFloat(searchAreaLat) : undefined,
+        searchAreaLng: searchAreaLng ? parseFloat(searchAreaLng) : undefined,
+        bhkConfig,
+        minRent,
+        maxRent,
+        furnishingStatus,
+        tenantPreference,
+        zeroBrokerage,
+        distance: distanceVal,
+        pois: inputPois.map(p => p.label),
+        flatmatePreferences: searcherPrefs,
+        moreFilters: {
+          availableFromToday,
+          petPolicy: petPolicy !== 'any' ? petPolicy : undefined,
+          parkingType: parkingType !== 'any' ? parkingType : undefined,
+          powerBackup: powerBackup !== 'any' ? powerBackup : undefined,
+          waterSupplyType: waterSupplyType !== 'any' ? waterSupplyType : undefined,
+          evCharging,
+          fiberAvailable,
+          isVerifiedOnly,
+        },
+      },
+      scoredProperties.length
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, data: scoredProperties });
   } catch (error: any) {

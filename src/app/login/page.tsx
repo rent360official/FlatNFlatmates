@@ -5,19 +5,25 @@ import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Phone, Lock, User as UserIcon, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TurnstileWidget from "@/components/common/TurnstileWidget";
+import { useMsg91Otp } from "@/lib/useMsg91Otp";
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
+  const { isLoaded: isSdkLoaded, sendOtp: sdkSendOtp, retryOtp: sdkRetryOtp, verifyOtp: sdkVerifyOtp } = useMsg91Otp();
+
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [showOtpField, setShowOtpField] = useState(false);
   const [userExists, setUserExists] = useState<boolean | null>(null);
   const [loadingOtp, setLoadingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -28,23 +34,65 @@ function LoginForm() {
     }
     setLoadingOtp(true);
     try {
+      // 1. Security & Rate Limit validation on backend
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, turnstileToken }),
       });
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || "Failed to send OTP. Please check your number.");
-      } else {
-        setUserExists(data.exists);
-        setShowOtpField(true);
+        setLoadingOtp(false);
+        return;
       }
+
+      setUserExists(data.exists);
+
+      // 2. Dispatch OTP via MSG91 Client Web SDK if loaded
+      if (isSdkLoaded) {
+        const sdkRes = await sdkSendOtp(phone);
+        if (!sdkRes.success) {
+          console.warn("[MSG91] SDK send error, falling back:", sdkRes.error);
+        }
+      }
+
+      setShowOtpField(true);
     } catch (err) {
       console.error(err);
       alert("Network error: Failed to request OTP SMS.");
     } finally {
       setLoadingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResendingOtp(true);
+    try {
+      if (isSdkLoaded) {
+        const res = await sdkRetryOtp(null);
+        if (res.success) {
+          alert("OTP resent successfully!");
+        } else {
+          alert(res.error || "Failed to resend OTP.");
+        }
+      } else {
+        const res = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("OTP resent successfully!");
+        } else {
+          alert(data.error || "Failed to resend OTP.");
+        }
+      }
+    } catch (e) {
+      alert("Failed to resend OTP.");
+    } finally {
+      setResendingOtp(false);
     }
   };
 
@@ -59,9 +107,23 @@ function LoginForm() {
       return;
     }
     startTransition(async () => {
+      let verificationPayload = otp;
+
+      // If MSG91 Web SDK is active and not using dev bypass code
+      if (isSdkLoaded && otp !== "123456") {
+        const verifyRes = await sdkVerifyOtp(otp);
+        if (!verifyRes.success) {
+          alert(verifyRes.error || "Invalid verification OTP code.");
+          return;
+        }
+        if (verifyRes.token) {
+          verificationPayload = verifyRes.token;
+        }
+      }
+
       const result = await signIn("credentials", {
         phone,
-        otp,
+        otp: verificationPayload,
         name: userExists ? undefined : name,
         email: userExists ? undefined : (email || undefined),
         redirect: false,
@@ -118,6 +180,7 @@ function LoginForm() {
                 />
               </div>
             </div>
+            <TurnstileWidget onVerify={setTurnstileToken} />
             <button
               type="submit"
               disabled={loadingOtp}
@@ -177,14 +240,21 @@ function LoginForm() {
               </div>
             </div>
             <div className="flex justify-between items-center text-[10px]">
-              <span className="text-slate-400">OTP sent to {phone}</span>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendingOtp}
+                className="text-brand-primary hover:underline font-semibold disabled:opacity-50"
+              >
+                {resendingOtp ? "Resending..." : "Resend OTP"}
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setShowOtpField(false);
                   setUserExists(null);
                 }}
-                className="text-brand-primary hover:underline font-semibold"
+                className="text-slate-500 hover:underline font-medium"
               >
                 Change Number
               </button>

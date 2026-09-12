@@ -190,7 +190,7 @@ export default async function SettingsAdminPage() {
                         {flag.key}
                       </code>
                       {flag.value === true ? (
-                        <span className="text-[9px] bg-bg-status-successBg/15 text-brand-primary px-1.5 py-0.5 rounded font-bold border border-emerald-100">
+                        <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
                           Active
                         </span>
                       ) : (

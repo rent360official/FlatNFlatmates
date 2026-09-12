@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   SlidersHorizontal, Search, Navigation,
@@ -9,6 +9,7 @@ import {
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
 import { mapStyles } from "@/lib/mapStyles";
 import { colors } from "@/theme/colors";
+import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
 
 interface POI {
   _id: string;
@@ -29,7 +30,15 @@ export const POPULAR_LOCALITIES_DATA: { [key: string]: { label: string; lat: num
   "Kalyani Nagar": { label: "Kalyani Nagar, Pune, Maharashtra, India", lat: 18.5463, lng: 73.9042 },
 };
 
-export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; initialLocality?: string }) {
+export default function SearchWizard({
+  pois,
+  initialLocality,
+  facebookGroups = [],
+}: {
+  pois: POI[];
+  initialLocality?: string;
+  facebookGroups?: FacebookGroupData[];
+}) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [properties, setProperties] = useState<any[]>([]);
@@ -1107,12 +1116,12 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
               </div>
             ) : properties.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {properties.map((prop: any) => {
+                {properties.map((prop: any, index: number) => {
                   const isHovered = hoveredPropId === prop._id.toString();
                   return (
-                    <div
-                      key={prop._id.toString()}
-                      onMouseEnter={() => setHoveredPropId(prop._id.toString())}
+                    <React.Fragment key={prop._id.toString()}>
+                      <div
+                        onMouseEnter={() => setHoveredPropId(prop._id.toString())}
                       onMouseLeave={() => setHoveredPropId(null)}
                       className={`bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between transition-all duration-150 ${isHovered ? "border-brand-primary/60 ring-2 ring-brand-primary/10" : "hover:border-slate-350"
                         }`}
@@ -1127,7 +1136,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                         {/* Top-left badges row */}
                         <div className="absolute top-3 left-3 flex flex-col gap-1">
                           {!prop.brokerageFlag ? (
-                            <span className="bg-status-successBg/150 text-white font-extrabold text-[9px] px-2 py-0.5 rounded shadow-sm border border-emerald-400 uppercase tracking-wide">
+                            <span className="bg-emerald-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded shadow-sm border border-emerald-500 uppercase tracking-wide">
                               Zero Brokerage
                             </span>
                           ) : (
@@ -1144,7 +1153,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                         {/* Top-right feature badges */}
                         <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
                           {prop.petPolicy === 'allowed' && (
-                            <span className="bg-amber-50 text-amber-700 font-bold text-[9px] px-2 py-0.5 rounded shadow-sm border border-amber-150 uppercase tracking-wide">
+                            <span className="bg-amber-50 text-amber-700 font-bold text-[9px] px-2 py-0.5 rounded shadow-sm border border-amber-200 uppercase tracking-wide">
                               🐾 Pet Friendly
                             </span>
                           )}
@@ -1163,7 +1172,7 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                             </span>
                           ) : (
                             <span className="absolute bottom-3 right-3 bg-amber-600/95 text-white font-semibold text-[10px] px-2 py-1 rounded-lg shadow-sm border border-amber-500 flex items-center space-x-1 animate-in zoom-in-95" title="Outside selected commute distance boundary">
-                              <Car className="h-3 w-3 text-amber-250 animate-pulse" />
+                              <Car className="h-3 w-3 text-amber-200 animate-pulse" />
                               <span>{prop.distanceKm} km ({prop.commuteTimeMin}m) • Outside</span>
                             </span>
                           )
@@ -1190,22 +1199,22 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
 
                             {/* Stated Preference Badges */}
                             {gymGuy === "Definitely" && prop.nearbyAmenities?.gyms > 0 && (
-                              <span className="bg-bg-status-successBg/15 text-brand-primary text-[9px] font-semibold px-2 py-0.5 rounded border border-emerald-150">
+                              <span className="bg-emerald-50 text-emerald-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-emerald-200">
                                 🏋️ {prop.nearbyAmenities.gyms} Gyms {prop.nearbyAmenities.gymsMinDist ? `(${prop.nearbyAmenities.gymsMinDist} km)` : "nearby"}
                               </span>
                             )}
                             {outsideEater && outsideEater !== "No, only homemade foodie" && prop.nearbyAmenities?.cafes > 0 && (
-                              <span className="bg-amber-50 text-amber-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-amber-150">
+                              <span className="bg-amber-50 text-amber-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-amber-200">
                                 🍕 Food {prop.nearbyAmenities.cafesMinDist ? `(${prop.nearbyAmenities.cafesMinDist} km)` : "places"}
                               </span>
                             )}
                             {socialType === "Socializing" && prop.nearbyAmenities?.nightlife > 0 && (
-                              <span className="bg-purple-50 text-purple-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-purple-150">
+                              <span className="bg-purple-50 text-purple-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-purple-200">
                                 🥳 Clubs & cafes {prop.nearbyAmenities.nightlifeMinDist ? `(${prop.nearbyAmenities.nightlifeMinDist} km)` : "nearby"}
                               </span>
                             )}
                             {socialType === "Reserved" && prop.nearbyAmenities?.nightlife === 0 && (
-                              <span className="bg-slate-100 text-slate-650 text-[9px] font-semibold px-2 py-0.5 rounded border border-slate-200">
+                              <span className="bg-slate-100 text-slate-600 text-[9px] font-semibold px-2 py-0.5 rounded border border-slate-200">
                                 🤫 Quiet area
                               </span>
                             )}
@@ -1217,12 +1226,12 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                               </span>
                             )}
                             {prop.nearbyAmenities?.supermarkets > 0 && (
-                              <span className="bg-teal-50 text-teal-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-teal-150">
+                              <span className="bg-teal-50 text-teal-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-teal-200">
                                 🛒 Supermarket {prop.nearbyAmenities.supermarketsMinDist ? `(${prop.nearbyAmenities.supermarketsMinDist} km)` : "nearby"}
                               </span>
                             )}
                             {prop.nearbyAmenities?.hospitals > 0 && (
-                              <span className="bg-red-50 text-red-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-red-150">
+                              <span className="bg-red-50 text-red-700 text-[9px] font-semibold px-2 py-0.5 rounded border border-red-200">
                                 🏥 Hospital {prop.nearbyAmenities.hospitalsMinDist ? `(${prop.nearbyAmenities.hospitalsMinDist} km)` : "nearby"}
                               </span>
                             )}
@@ -1266,12 +1275,26 @@ export default function SearchWizard({ pois, initialLocality }: { pois: POI[]; i
                         </div>
                       </div>
                     </div>
+
+                      {/* Repeating Facebook Community CTA every 8 items OR at end of results */}
+                      {((index + 1) % 8 === 0 || index + 1 === properties.length) && (
+                        <FacebookGroupCTA
+                          key={`fb-cta-${index}`}
+                          groups={facebookGroups}
+                          category="flats"
+                          isBlank={false}
+                        />
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-16 border border-dashed rounded-xl bg-slate-50 text-slate-400 text-xs">
-                No flats found matching your selected budget or commute distance in Pune.
+              <div className="space-y-4">
+                <div className="text-center py-12 border border-dashed rounded-xl bg-slate-50 text-slate-400 text-xs">
+                  No flats found matching your selected budget or commute distance in Pune.
+                </div>
+                <FacebookGroupCTA groups={facebookGroups} category="flats" isBlank={true} />
               </div>
             )}
           </div>

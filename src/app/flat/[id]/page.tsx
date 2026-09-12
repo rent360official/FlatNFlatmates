@@ -2,18 +2,23 @@ import dbConnect from "@/lib/db";
 import Property from "@/models/Property";
 import PointOfInterest from "@/models/PointOfInterest";
 import User from "@/models/User";
-import CallLog from "@/models/CallLog";
 import Locality from "@/models/Locality";
 import City from "@/models/City";
 import AmenityCache from "@/models/AmenityCache";
 import FlatmateProfileListing from "@/models/FlatmateProfileListing";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import CallButton from "./CallButton";
+import PropertyContactActions from "@/components/property/PropertyContactActions";
+import PropertyMediaGallery, { MediaItem } from "@/components/property/PropertyMediaGallery";
 import { 
-  Navigation, ArrowLeft, Sparkles, Check, AlertTriangle, Film
+  Navigation, ArrowLeft, Sparkles, Check, Film
 } from "lucide-react";
 import React from "react";
+
+import { recordPropertyViewDemand } from "@/lib/demandTelemetry";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import { isFeatureActive } from "@/lib/featureAccess";
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +28,7 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
   const _Locality = Locality;
   const _City = City;
 
-  const property = await Property.findById(params.id)
+  const property: any = await Property.findById(params.id)
     .populate('localityId', 'name')
     .populate('cityId', 'name')
     .lean();
@@ -35,127 +40,116 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
   // Increment real page views count
   await Property.findByIdAndUpdate(params.id, { $inc: { viewsCount: 1 } });
 
-  // Fetch cached amenities counts
-  const amenityDoc = await AmenityCache.findOne({ propertyId: property._id }).lean();
-  const amenities = (amenityDoc?.amenities as any) || {
-    gyms: 1,
-    cafes: 3,
-    nightlife: 2,
-    supermarkets: 1,
-    transit: 0,
-    hospitals: 1,
-    parks: 1
-  };
+  // Record Demand Telemetry asynchronously
+  const session = await getServerSession(authOptions);
+  recordPropertyViewDemand(
+    {
+      _id: property._id,
+      title: property.title,
+      localityId: property.localityId?._id,
+      localityName: property.localityId?.name,
+      bhkConfig: property.bhkConfig,
+      rentAmount: property.rentAmount,
+      furnishingStatus: property.furnishingStatus,
+      tenantType: property.tenantPreference,
+    },
+    session?.user ? { id: (session.user as any).id, role: (session.user as any).role } : null
+  ).catch(() => {});
 
-  // Fetch the latest call log to check for soft availability warnings
-  const latestCall = await CallLog.findOne({ propertyId: property._id })
-    .sort({ createdAt: -1 })
-    .lean();
-  const isReportedRented = latestCall?.detectedAvailability === 'rented';
+  // Fetch cached amenities counts if available
+  const amenityDoc = await AmenityCache.findOne({ propertyId: property._id }).lean();
+  const amenities = (amenityDoc?.amenities as any) || null;
 
   // Calculate distances to Pune POIs dynamically
   const pois = await PointOfInterest.find({ isActive: true }).lean();
+  const propLat = property.location?.coordinates?.[1] || 18.5204;
+  const propLng = property.location?.coordinates?.[0] || 73.8567;
   
-  const propLat = property.location.coordinates[1];
-  const propLng = property.location.coordinates[0];
-
-  const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const nearbyPois = pois.map((poi: any) => {
+    const [poiLng, poiLat] = poi.location?.coordinates || [73.8567, 18.5204];
+    const dLat = (poiLat - propLat) * (Math.PI / 180);
+    const dLon = (poiLng - propLng) * (Math.PI / 180);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.cos(propLat * (Math.PI / 180)) * Math.cos(poiLat * (Math.PI / 180)) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const nearbyPois = pois.map((poi: any) => {
-    const dist = getDistanceInKm(
-      propLat,
-      propLng,
-      poi.location.coordinates[1],
-      poi.location.coordinates[0]
-    );
+    const dist = parseFloat((6371 * c).toFixed(1));
     return {
       ...poi,
-      distanceKm: parseFloat(dist.toFixed(2)),
-      commuteTimeMin: Math.round(dist * 3.5 + 2),
+      distanceKm: dist,
+      commuteTimeMin: Math.max(5, Math.round(dist * 3.5))
     };
-  })
-  .sort((a, b) => a.distanceKm - b.distanceKm)
-  .slice(0, 4);
+  }).sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 4);
 
-  // Find owner/landlord profile
-  const owner = await User.findById(property.ownerId).lean();
+  const owner: any = await User.findById(property.ownerId).lean();
+  const flatmateListing: any = await FlatmateProfileListing.findOne({ propertyId: property._id }).lean();
+  const flatmateUser: any = flatmateListing ? await User.findById(flatmateListing.userId).lean() : null;
 
-  // Find if there is a flatmate profile listing registered with this property
-  const flatmateListing = await FlatmateProfileListing.findOne({
-    propertyId: property._id,
-    isActive: true,
-  }).lean();
+  const rawImages: any[] = Array.isArray(property.images) ? property.images : [];
+  const rawVideos: any[] = Array.isArray(property.videos) ? property.videos : [];
 
-  let flatmateUser = null;
-  if (flatmateListing) {
-    flatmateUser = await User.findById(flatmateListing.userId).lean();
+  const mediaList: MediaItem[] = [];
+
+  // Add images
+  rawImages.forEach((img: any, idx: number) => {
+    const url = typeof img === 'string' ? img : img?.url;
+    if (url) {
+      mediaList.push({
+        type: 'image',
+        url,
+        isCover: typeof img === 'object' ? Boolean(img.isCover) : idx === 0,
+        status: typeof img === 'object' ? img.status : 'ready',
+        processedUrls: typeof img === 'object' ? img.processedUrls : undefined,
+        error: typeof img === 'object' ? img.error : undefined,
+      });
+    }
+  });
+
+  // Add videos
+  rawVideos.forEach((vid: any) => {
+    const url = typeof vid === 'string' ? vid : vid?.url;
+    if (url) {
+      mediaList.push({
+        type: 'video',
+        url,
+        status: typeof vid === 'object' ? vid.status : 'ready',
+        processedUrl: typeof vid === 'object' ? vid.processedUrl : undefined,
+        thumbnailUrl: typeof vid === 'object' ? vid.thumbnailUrl : undefined,
+        durationSeconds: typeof vid === 'object' ? vid.durationSeconds : undefined,
+        error: typeof vid === 'object' ? vid.error : undefined,
+      });
+    }
+  });
+
+  // Add tourVideoUrl if present and not already added
+  if (property.tourVideoUrl && !mediaList.some(m => m.url === property.tourVideoUrl)) {
+    mediaList.push({
+      type: 'video',
+      url: property.tourVideoUrl,
+      status: 'ready',
+    });
   }
 
-  // Find roommates associated with this property's locality who are searchable
-  const roommates = await User.find({
-    isFlatmateSearchable: true,
-    targetLocations: (property.localityId as any)?._id,
-  })
-  .limit(2)
-  .lean();
+  // Fallback if no media items provided
+  if (mediaList.length === 0) {
+    mediaList.push({
+      type: 'image',
+      url: '/placeholder-property.jpg',
+      status: 'ready',
+    });
+  }
 
-  const primaryImage = property.images?.[0]?.url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80";
-  const detailImage = property.images?.[1]?.url || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80";
+  const isInterestSmsEnabled = await isFeatureActive('property_interest_sms', (session?.user as any)?.role);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full flex-grow space-y-8">
-      {/* Back link */}
-      <div>
-        <Link href="/search/flats" className="inline-flex items-center space-x-1.5 text-xs font-semibold text-brand-primary hover:underline">
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Pune search</span>
-        </Link>
-      </div>
-
-      {/* Soft warning banner if reported rented */}
-      {isReportedRented && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3 text-amber-800 animate-in fade-in duration-200">
-          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0 animate-bounce" />
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold">Soft Status: Reported as Rented</h4>
-            <p className="text-[11px] text-amber-700 leading-relaxed font-sans">
-              Warning: A recent call connection log suggests this flat may no longer be available. Owner status confirmation is pending.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Image Gallery */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-[300px] md:h-[450px]">
-        <div className="md:col-span-8 bg-slate-100 rounded-2xl overflow-hidden relative border">
-          <img src={primaryImage} className="h-full w-full object-cover" alt="Primary Cover View" />
-          {!property.brokerageFlag && (
-            <span className="absolute top-4 left-4 bg-status-successBg/150 text-white font-extrabold text-[10px] px-3 py-1 rounded-lg shadow-md border border-emerald-400 uppercase tracking-wider">
-              Zero Brokerage
-            </span>
-          )}
-        </div>
-        <div className="hidden md:flex md:col-span-4 flex-col gap-4">
-          <div className="h-1/2 bg-slate-100 rounded-2xl overflow-hidden border">
-            <img src={detailImage} className="h-full w-full object-cover" alt="Interior Details" />
-          </div>
-          <div className="h-1/2 bg-slate-50 rounded-2xl border flex flex-col items-center justify-center p-6 text-center text-slate-400 space-y-1">
-            <Sparkles className="h-6 w-6 text-brand-primary/60" />
-            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">More Photos</span>
-            <p className="text-[9px] text-slate-400">Upgrade to Vibe Premium to see full VR tours</p>
-          </div>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Property Media Gallery (Images + Videos, Desktop Split, Mobile Swipe Carousel, Lightbox Fullscreen) */}
+      <PropertyMediaGallery
+        media={mediaList}
+        brokerageFlag={property.brokerageFlag}
+        propertyTitle={property.title}
+      />
 
       {/* Main Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -357,40 +351,6 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
             </div>
           </div>
 
-          {/* Property Video Tours */}
-          {((property.videos && property.videos.length > 0) || property.tourVideoUrl) && (
-            <div className="space-y-4 border-t pt-6">
-              <div className="space-y-1">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                  <Film className="h-4 w-4 text-brand-primary" />
-                  Video Tour & Walkthroughs ({property.videos?.length || 1})
-                </h3>
-                <p className="text-[11px] text-slate-400">High-definition video walkthroughs uploaded by the property owner.</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(property.videos && property.videos.length > 0
-                  ? property.videos
-                  : [{ url: property.tourVideoUrl!, fileName: 'Tour Video' }]
-                ).map((vid: any, idx: number) => (
-                  <div key={idx} className="bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-800 flex flex-col">
-                    <video
-                      src={vid.url}
-                      controls
-                      preload="metadata"
-                      className="w-full max-h-56 bg-black object-contain"
-                    />
-                    {vid.fileName && (
-                      <div className="p-2.5 bg-slate-900/90 border-t border-slate-800 text-[11px] font-medium text-slate-300 truncate">
-                        {vid.fileName}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Commute Distances Locator */}
           <div className="space-y-4 border-t pt-6">
             <div className="space-y-1">
@@ -417,34 +377,36 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
           </div>
 
           {/* Neighborhood Amenities */}
-          <div className="space-y-4 border-t pt-6">
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Neighborhood Amenities</h3>
-              <p className="text-[11px] text-slate-400">Nearby establishments mapped within 1.5 km of this property location.</p>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Gyms", val: amenities.gyms, minDist: (amenities as any).gymsMinDist, icon: "🏋️" },
-                { label: "Cafés/Eateries", val: amenities.cafes, minDist: (amenities as any).cafesMinDist, icon: "🍕" },
-                { label: "Supermarkets", val: amenities.supermarkets, minDist: (amenities as any).supermarketsMinDist, icon: "🛒" },
-                { label: "Transit Points", val: amenities.transit, minDist: (amenities as any).transitMinDist, icon: "🚇" },
-                { label: "Hospitals/Clinics", val: amenities.hospitals, minDist: (amenities as any).hospitalsMinDist, icon: "🏥" },
-                { label: "Parks/Greenery", val: amenities.parks, minDist: (amenities as any).parksMinDist, icon: "🌳" },
-                { label: "Nightlife/Bars", val: amenities.nightlife, minDist: (amenities as any).nightlifeMinDist, icon: "🍺" },
-              ].map((item) => (
-                <div key={item.label} className="p-3 bg-slate-50 border rounded-xl flex items-center space-x-2.5">
-                  <span className="text-xl">{item.icon}</span>
-                  <div>
-                    <span className="block text-[10px] font-bold text-slate-800">{item.val} {item.label}</span>
-                    <span className="text-[9px] text-slate-400 block font-medium">
-                      {item.minDist ? `Closest: ${item.minDist} km` : "Nearby"}
-                    </span>
+          {amenities && (
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Neighborhood Amenities</h3>
+                <p className="text-[11px] text-slate-400">Nearby establishments mapped within 1.5 km of this property location.</p>
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Gyms", val: amenities.gyms, minDist: (amenities as any).gymsMinDist, icon: "🏋️" },
+                  { label: "Cafés/Eateries", val: amenities.cafes, minDist: (amenities as any).cafesMinDist, icon: "🍕" },
+                  { label: "Supermarkets", val: amenities.supermarkets, minDist: (amenities as any).supermarketsMinDist, icon: "🛒" },
+                  { label: "Transit Points", val: amenities.transit, minDist: (amenities as any).transitMinDist, icon: "🚇" },
+                  { label: "Hospitals/Clinics", val: amenities.hospitals, minDist: (amenities as any).hospitalsMinDist, icon: "🏥" },
+                  { label: "Parks/Greenery", val: amenities.parks, minDist: (amenities as any).parksMinDist, icon: "🌳" },
+                  { label: "Nightlife/Bars", val: amenities.nightlife, minDist: (amenities as any).nightlifeMinDist, icon: "🍺" },
+                ].filter(item => typeof item.val === 'number' && item.val > 0).map((item) => (
+                  <div key={item.label} className="p-3 bg-slate-50 border rounded-xl flex items-center space-x-2.5">
+                    <span className="text-xl">{item.icon}</span>
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-800">{item.val} {item.label}</span>
+                      <span className="text-[9px] text-slate-400 block font-medium">
+                        {item.minDist ? `Closest: ${item.minDist} km` : "Nearby"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Action Panel Column */}
@@ -461,8 +423,15 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
               <p className="text-[10px] text-slate-400 leading-normal">Inclusive of maintenance charges.</p>
             </div>
 
-            {/* Calling trigger */}
-            <CallButton propertyId={property._id.toString()} />
+            {/* Calling & Contact Actions (Call, WhatsApp, Interested via MSG91) */}
+            <PropertyContactActions
+              propertyId={property._id.toString()}
+              propertyTitle={`${property.bhkConfig} in ${property.title}`}
+              ownerPhone={owner?.phone}
+              allowWhatsappContact={property.allowWhatsappContact !== false}
+              showInterestButton={isInterestSmsEnabled}
+              currentUserName={session?.user?.name || undefined}
+            />
 
             {/* Flatmate profile button (if registered) */}
             {flatmateListing && flatmateUser && (
@@ -505,26 +474,6 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                 </div>
               </div>
             </div>
-
-            {/* Attached roommate finder info */}
-            {roommates.length > 0 && (
-              <div className="border-t pt-4 space-y-3">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Flatmate Match</span>
-                <div className="space-y-2">
-                  {roommates.map((r: any) => (
-                    <div key={r._id.toString()} className="bg-slate-50 border rounded-xl p-3 flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-800">{r.name}</h4>
-                        <span className="text-[9px] text-slate-400 block">{r.profession || "Roommate seeker"}</span>
-                      </div>
-                      <span className="text-[9px] bg-brand-primary/10 text-brand-primaryHover px-2 py-0.5 rounded font-bold border border-brand-primary/15">
-                        Compatible
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
           </div>
         </div>

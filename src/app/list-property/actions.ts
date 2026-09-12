@@ -65,10 +65,18 @@ export async function publishProperty(data: {
 
   // New fields — Safety Features
   safetyFeatures?: string[];
+
+  // Contact preferences
+  allowWhatsappContact?: boolean;
 }) {
   try {
     const sessionUser = await getSessionUser();
     await dbConnect();
+
+    const userRecord = await User.findById(sessionUser.id);
+    if (userRecord?.verificationStatus === 'rejected') {
+      throw new Error("Your account verification is currently rejected. You cannot post listings until your account is re-verified.");
+    }
 
     // Get Pune City Reference
     const puneCity = await City.findOne({ name: "Pune" });
@@ -119,6 +127,7 @@ export async function publishProperty(data: {
       waterSupplyType: data.waterSupplyType ?? 'municipal',
       internetReadiness: data.internetReadiness ?? { fiberAvailable: false },
       safetyFeatures: data.safetyFeatures ?? [],
+      allowWhatsappContact: data.allowWhatsappContact !== false,
       // isVerified is always false for owner-submitted listings (admin-only field)
       isVerified: false,
     });
@@ -186,6 +195,12 @@ export async function updateProperty(propertyId: string, data: {
 
   // New fields — Safety Features
   safetyFeatures?: string[];
+
+  // Contact preferences
+  allowWhatsappContact?: boolean;
+
+  // Activation flag
+  makeLive?: boolean;
 }) {
   try {
     const sessionUser = await getSessionUser();
@@ -226,6 +241,9 @@ export async function updateProperty(propertyId: string, data: {
     property.images = data.images as any;
     property.videos = (data.videos ?? (data.tourVideoUrl ? [{ url: data.tourVideoUrl, fileName: 'Tour Video' }] : [])) as any;
     property.tourVideoUrl = data.tourVideoUrl || data.videos?.[0]?.url || undefined;
+    if (data.allowWhatsappContact !== undefined) {
+      property.allowWhatsappContact = data.allowWhatsappContact;
+    }
     
     if (data.availableFrom) {
       property.availableFrom = new Date(data.availableFrom);
@@ -241,11 +259,17 @@ export async function updateProperty(propertyId: string, data: {
     if (data.internetReadiness) property.internetReadiness = data.internetReadiness;
     if (data.safetyFeatures) property.safetyFeatures = data.safetyFeatures;
 
+    if (data.makeLive) {
+      property.status = 'active';
+    }
+
     await property.save();
 
     revalidatePath("/profile/properties");
     revalidatePath(`/flat/${propertyId}`);
     revalidatePath("/search/flats");
+    revalidatePath("/admin/pending-approvals");
+    revalidatePath(`/approve-property/${propertyId}`);
     revalidatePath("/");
 
     return { success: true, propertyId: property._id.toString() };

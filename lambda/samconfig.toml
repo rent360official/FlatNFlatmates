@@ -1,0 +1,14 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "flatnflatmates-media-pipeline"
+resolve_s3 = true
+s3_prefix = "flatnflatmates-media-pipeline"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "ExistingBucketName=\"flatnflatmate-dir-dev\" AppUrl=\"https://flat-n-flatmates.vercel.app\" InternalMediaSecret=\"flatnflatmates_internal_media_secret_prod_key_2026\""
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-south-1"

@@ -39,5 +39,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     );
   }
 
-  return <AdminLayout>{children}</AdminLayout>;
+  const propertyCollectorUrl = process.env.PROPERTY_COLLECTOR_URL || process.env.NEXT_PUBLIC_PROPERTY_COLLECTOR_URL;
+
+  return <AdminLayout propertyCollectorUrl={propertyCollectorUrl}>{children}</AdminLayout>;
 }

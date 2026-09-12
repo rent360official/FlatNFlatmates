@@ -1,0 +1,9 @@
+{
+  "name": "flatnflatmates-process-image",
+  "version": "1.0.0",
+  "description": "Image processing lambda with Sharp",
+  "main": "index.js",
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

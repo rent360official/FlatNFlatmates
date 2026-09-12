@@ -1,5 +1,49 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export interface IPropertyImage {
+  _id?: mongoose.Types.ObjectId;
+  url: string;
+  isCover: boolean;
+  fileName?: string;
+  type?: 'image';
+  status?: 'processing' | 'ready' | 'failed';
+  rawKey?: string;
+  processedKeys?: {
+    thumb?: string;
+    medium?: string;
+    full?: string;
+  };
+  processedUrls?: {
+    thumb?: string;
+    medium?: string;
+    full?: string;
+  };
+  width?: number;
+  height?: number;
+  order?: number;
+  error?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface IPropertyVideo {
+  _id?: mongoose.Types.ObjectId;
+  url: string;
+  fileName?: string;
+  sizeBytes?: number;
+  type?: 'video';
+  status?: 'processing' | 'ready' | 'failed';
+  rawKey?: string;
+  processedKey?: string;
+  processedUrl?: string;
+  thumbnailKey?: string;
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  error?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface IProperty extends Document {
   ownerId: mongoose.Types.ObjectId;
   title: string;
@@ -25,12 +69,12 @@ export interface IProperty extends Document {
   brokerageAmount: number;
   amenities: string[];
   houseRules: string[];
-  images: { url: string; isCover: boolean; fileName?: string }[];
-  videos?: { url: string; fileName?: string; sizeBytes?: number }[];
+  images: IPropertyImage[];
+  videos?: IPropertyVideo[];
   tourVideoUrl?: string;
   googleMapPlaceId?: string;
   managementType: 'self_managed' | 'platform_managed';
-  status: 'draft' | 'active' | 'paused' | 'removed';
+  status: 'draft' | 'active' | 'paused' | 'removed' | 'pending_owner_approval';
 
   // --- Lease Flexibility ---
   availableFrom: Date;
@@ -62,6 +106,9 @@ export interface IProperty extends Document {
   // --- Safety Features (separate from amenities) ---
   safetyFeatures: string[];
 
+  // --- Contact Preferences ---
+  allowWhatsappContact?: boolean;
+
   // --- Analytics & Tracking ---
   viewsCount?: number;
 
@@ -72,6 +119,7 @@ export interface IProperty extends Document {
 const PropertySchema: Schema<IProperty> = new Schema(
   {
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    allowWhatsappContact: { type: Boolean, default: true },
     title: { type: String, required: true },
     description: { type: String, required: true },
     rentAmount: { type: Number, required: true },
@@ -124,6 +172,25 @@ const PropertySchema: Schema<IProperty> = new Schema(
         url: { type: String, required: true },
         isCover: { type: Boolean, default: false },
         fileName: { type: String },
+        type: { type: String, default: 'image' },
+        status: { type: String, enum: ['processing', 'ready', 'failed'], default: 'ready' },
+        rawKey: { type: String },
+        processedKeys: {
+          thumb: { type: String },
+          medium: { type: String },
+          full: { type: String },
+        },
+        processedUrls: {
+          thumb: { type: String },
+          medium: { type: String },
+          full: { type: String },
+        },
+        width: { type: Number },
+        height: { type: Number },
+        order: { type: Number },
+        error: { type: String, default: null },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
       },
     ],
     videos: [
@@ -131,6 +198,17 @@ const PropertySchema: Schema<IProperty> = new Schema(
         url: { type: String, required: true },
         fileName: { type: String },
         sizeBytes: { type: Number },
+        type: { type: String, default: 'video' },
+        status: { type: String, enum: ['processing', 'ready', 'failed'], default: 'ready' },
+        rawKey: { type: String },
+        processedKey: { type: String },
+        processedUrl: { type: String },
+        thumbnailKey: { type: String },
+        thumbnailUrl: { type: String },
+        durationSeconds: { type: Number },
+        error: { type: String, default: null },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
       },
     ],
     tourVideoUrl: { type: String },
@@ -142,7 +220,7 @@ const PropertySchema: Schema<IProperty> = new Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'active', 'paused', 'removed'],
+      enum: ['draft', 'active', 'paused', 'removed', 'pending_owner_approval'],
       default: 'active',
     },
 

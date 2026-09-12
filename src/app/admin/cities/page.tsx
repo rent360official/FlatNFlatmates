@@ -4,10 +4,12 @@ import Locality from "@/models/Locality";
 import PointOfInterest from "@/models/PointOfInterest";
 import { 
   createCity, deleteCity, 
-  createLocality, deleteLocality, 
-  createPOI, deletePOI 
+  createLocality, 
+  createPOI 
 } from "./actions";
-import { MapPin, Trash2, Plus, Landmark, Building, GraduationCap, Compass } from "lucide-react";
+import LocalitiesList, { LocalityItem } from "./LocalitiesList";
+import POIList, { POIItem } from "./POIList";
+import { Plus, Trash2 } from "lucide-react";
 import React from "react";
 
 export const dynamic = 'force-dynamic';
@@ -15,22 +17,31 @@ export const dynamic = 'force-dynamic';
 export default async function CitiesAdminPage() {
   await dbConnect();
   
-  const cities = await City.find().sort({ name: 1 }).lean();
-  const localities = await Locality.find().populate('cityId', 'name').sort({ name: 1 }).lean();
-  const pois = await PointOfInterest.find()
+  const rawCities = await City.find().sort({ name: 1 }).lean();
+  const rawLocalities = await Locality.find().populate('cityId', 'name').sort({ name: 1 }).lean();
+  const rawPois = await PointOfInterest.find()
     .populate('cityId', 'name')
     .populate('localityId', 'name')
     .sort({ name: 1 })
     .lean();
 
-  const getPoiIcon = (type: string) => {
-    switch (type) {
-      case 'college': return <GraduationCap className="h-3.5 w-3.5 text-brand-primary" />;
-      case 'office': return <Building className="h-3.5 w-3.5 text-sky-500" />;
-      case 'transit': return <Compass className="h-3.5 w-3.5 text-brand-primary" />;
-      default: return <Landmark className="h-3.5 w-3.5 text-slate-500" />;
-    }
-  };
+  const serializedLocalities: LocalityItem[] = rawLocalities.map((loc: any) => ({
+    _id: loc._id.toString(),
+    name: loc.name,
+    cityName: loc.cityId?.name,
+    lat: loc.location?.coordinates?.[1] || 0,
+    lng: loc.location?.coordinates?.[0] || 0,
+  }));
+
+  const serializedPois: POIItem[] = rawPois.map((poi: any) => ({
+    _id: poi._id.toString(),
+    name: poi.name,
+    type: poi.type,
+    localityName: poi.localityId?.name,
+    cityName: poi.cityId?.name,
+    lat: poi.location?.coordinates?.[1] || 0,
+    lng: poi.location?.coordinates?.[0] || 0,
+  }));
 
   return (
     <div className="space-y-8">
@@ -78,9 +89,9 @@ export default async function CitiesAdminPage() {
           </div>
 
           <div className="bg-white rounded-xl border shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Active Cities ({cities.length})</h3>
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Active Cities ({rawCities.length})</h3>
             <div className="divide-y divide-gray-100 overflow-y-auto max-h-[300px]">
-              {cities.map((city: any) => (
+              {rawCities.map((city: any) => (
                 <div key={city._id.toString()} className="py-2.5 flex items-center justify-between first:pt-0 last:pb-0">
                   <div>
                     <p className="text-xs font-bold text-slate-800">{city.name}</p>
@@ -105,7 +116,7 @@ export default async function CitiesAdminPage() {
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Target City</label>
                 <select name="cityId" required className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary">
-                  {cities.map((c: any) => (
+                  {rawCities.map((c: any) => (
                     <option key={c._id.toString()} value={c._id.toString()}>{c.name}</option>
                   ))}
                 </select>
@@ -154,29 +165,7 @@ export default async function CitiesAdminPage() {
             </form>
           </div>
 
-          <div className="bg-white rounded-xl border shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Localities ({localities.length})</h3>
-            <div className="divide-y divide-gray-100 overflow-y-auto max-h-[300px] pr-1">
-              {localities.map((loc: any) => (
-                <div key={loc._id.toString()} className="py-2.5 flex items-center justify-between first:pt-0 last:pb-0">
-                  <div>
-                    <div className="flex items-center space-x-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-brand-primary" />
-                      <p className="text-xs font-bold text-slate-800">{loc.name}</p>
-                    </div>
-                    <span className="text-[10px] text-slate-400">
-                      City: {loc.cityId?.name} | [{loc.location.coordinates[1]}, {loc.location.coordinates[0]}]
-                    </span>
-                  </div>
-                  <form action={deleteLocality.bind(null, loc._id.toString()) as any}>
-                    <button type="submit" className="text-slate-400 hover:text-red-500 transition-colors p-1.5">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LocalitiesList localities={serializedLocalities} />
         </div>
 
         {/* Points of Interest Column */}
@@ -187,7 +176,7 @@ export default async function CitiesAdminPage() {
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Target City</label>
                 <select name="cityId" required className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary">
-                  {cities.map((c: any) => (
+                  {rawCities.map((c: any) => (
                     <option key={c._id.toString()} value={c._id.toString()}>{c.name}</option>
                   ))}
                 </select>
@@ -197,8 +186,8 @@ export default async function CitiesAdminPage() {
                   <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Locality (Optional)</label>
                   <select name="localityId" className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary">
                     <option value="">None (Generic)</option>
-                    {localities.map((l: any) => (
-                      <option key={l._id.toString()} value={l._id.toString()}>{l.name}</option>
+                    {serializedLocalities.map((l) => (
+                      <option key={l._id} value={l._id}>{l.name}</option>
                     ))}
                   </select>
                 </div>
@@ -256,29 +245,7 @@ export default async function CitiesAdminPage() {
             </form>
           </div>
 
-          <div className="bg-white rounded-xl border shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Points of Interest ({pois.length})</h3>
-            <div className="divide-y divide-gray-100 overflow-y-auto max-h-[300px] pr-1">
-              {pois.map((poi: any) => (
-                <div key={poi._id.toString()} className="py-2.5 flex items-center justify-between first:pt-0 last:pb-0">
-                  <div>
-                    <div className="flex items-center space-x-1.5">
-                      {getPoiIcon(poi.type)}
-                      <p className="text-xs font-bold text-slate-800 leading-tight">{poi.name}</p>
-                    </div>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">
-                      Locality: {poi.localityId?.name || "Generic"} | Cat: {poi.type} | [{poi.location.coordinates[1]}, {poi.location.coordinates[0]}]
-                    </span>
-                  </div>
-                  <form action={deletePOI.bind(null, poi._id.toString()) as any}>
-                    <button type="submit" className="text-slate-400 hover:text-red-500 transition-colors p-1.5 flex-shrink-0">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </div>
+          <POIList pois={serializedPois} />
         </div>
 
       </div>

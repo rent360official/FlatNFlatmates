@@ -67,7 +67,7 @@ export default function CallButton({ propertyId }: { propertyId: string }) {
           </button>
         </div>
       ) : (
-        <div className="bg-status-successBg/15 border border-emerald-100 rounded-xl p-4 space-y-2 animate-in fade-in duration-200">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-2 animate-in fade-in duration-200">
           <div className="flex items-center space-x-2 text-emerald-800 font-bold text-xs">
             <ShieldCheck className="h-4.5 w-4.5 text-brand-primary" />
             <span>Proxy Bridge Active</span>

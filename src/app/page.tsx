@@ -59,11 +59,11 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-brand-primary mr-3 flex-shrink-0" />
-                  <span className="text-sm text-gray-700"><strong>Call Proxying & Recording:</strong> Securely talk to owners without giving away your personal number.</span>
+                  <span className="text-sm text-gray-700"><strong>Direct Verified Connect:</strong> Connect directly with property owners via Call, WhatsApp, and instant SMS alerts.</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-brand-primary mr-3 flex-shrink-0" />
-                  <span className="text-sm text-gray-700"><strong>Automatic Availability Flags:</strong> Soft status indicator is verified via post-call signals.</span>
+                  <span className="text-sm text-gray-700"><strong>Verified Listings & Flatmates:</strong> Direct tenant-owner contact without middleman broker spam.</span>
                 </li>
               </ul>
             </div>

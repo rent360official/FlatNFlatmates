@@ -1,37 +1,18 @@
-import type { FeatureStatus } from '@/models/FeatureFlag';
+import dbConnect from '@/lib/db';
+import FeatureFlag from '@/models/FeatureFlag';
+import { isFeatureVisible, FeatureStatus } from '@/lib/featureConstants';
+
+export * from '@/lib/featureConstants';
 
 /**
- * Roles that can see features in "testing" state.
+ * Checks in database whether a given feature flag is active/enabled for the user.
  */
-export const TESTING_ROLES = ['super_admin', 'ops_admin', 'tester'] as const;
-
-/**
- * Returns true if the feature should be visible to the user given their role.
- *
- * - disabled  → always false (no one sees it)
- * - testing   → true only for TESTING_ROLES
- * - enabled   → true for everyone
- */
-export function isFeatureVisible(status: FeatureStatus, role: string | undefined | null): boolean {
-  if (status === 'disabled') return false;
-  if (status === 'enabled') return true;
-  // testing
-  return TESTING_ROLES.includes(role as any);
-}
-
-/**
- * Returns a human-readable label and colour for a given feature status.
- */
-export function featureStatusMeta(status: FeatureStatus): {
-  label: string;
-  colour: 'grey' | 'amber' | 'emerald';
-} {
-  switch (status) {
-    case 'disabled':
-      return { label: 'Disabled', colour: 'grey' };
-    case 'testing':
-      return { label: 'Testing', colour: 'amber' };
-    case 'enabled':
-      return { label: 'Enabled', colour: 'emerald' };
+export async function isFeatureActive(key: string, role?: string | null): Promise<boolean> {
+  await dbConnect();
+  const flag = await FeatureFlag.findOne({ key }).lean();
+  if (!flag) {
+    // If flag doesn't exist yet, default to enabled for core features or disabled
+    return true;
   }
+  return isFeatureVisible(flag.status, role);
 }

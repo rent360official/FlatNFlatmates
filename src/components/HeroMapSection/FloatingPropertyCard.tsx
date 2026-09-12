@@ -51,7 +51,7 @@ export default function FloatingPropertyCard({ card, isMobileMap = false }: Floa
           <div className="p-1 flex flex-col gap-0.5 text-left">
             <h4 className="text-[7.5px] font-bold text-gray-900 truncate leading-tight">{card.title}</h4>
             <div className="flex items-center justify-between mt-0.5">
-              <span className="bg-status-successBg/15 text-brand-primary text-[6.5px] font-bold px-1 rounded-full">
+              <span className="bg-emerald-50 text-emerald-700 text-[6.5px] font-bold px-1 rounded-full border border-emerald-200">
                 {card.match}% Match
               </span>
             </div>
@@ -94,7 +94,7 @@ export default function FloatingPropertyCard({ card, isMobileMap = false }: Floa
         <div className="p-1.5 flex flex-col gap-0.5 text-left">
           <h4 className="text-[10px] font-bold text-gray-900 line-clamp-1">{card.title}</h4>
           <div className="flex items-center justify-between mt-0.5">
-            <span className="bg-status-successBg/15 text-brand-primary text-[8px] font-extrabold px-1 py-0.5 rounded-full">
+            <span className="bg-emerald-50 text-emerald-700 text-[8px] font-extrabold px-1 py-0.5 rounded-full border border-emerald-200">
               {card.match}% Match
             </span>
             <div className="flex items-center gap-0.5">

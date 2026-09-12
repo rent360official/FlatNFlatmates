@@ -56,7 +56,10 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2.5">
+        <Link
+          href="/"
+          className="flex items-center space-x-2.5 bg-white rounded-xl px-2.5 py-1.5 transition-all"
+        >
           <img
             src="/logo.png"
             alt="FlatNFlatmates.in"

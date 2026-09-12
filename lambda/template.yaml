@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Media processing pipeline for FlatNFlatmates.in (Sharp image resizing & FFmpeg 720p video transcoding)
+
+Parameters:
+  ExistingBucketName:
+    Type: String
+    Description: The name of the existing S3 bucket
+    Default: flatnflatmate-dir-dev
+  AppUrl:
+    Type: String
+    Description: Base URL of Next.js application for internal webhooks
+    Default: https://flat-n-flatmates.vercel.app
+  InternalMediaSecret:
+    Type: String
+    Description: Shared secret for /api/internal/media/:id/complete callback
+    Default: flatnflatmates_internal_media_secret_prod_key_2026
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 900 # 15 minutes
+    Environment:
+      Variables:
+        APP_URL: !Ref AppUrl
+        INTERNAL_MEDIA_SECRET: !Ref InternalMediaSecret
+
+Resources:
+  # -------------------------------------------------------------
+  # Image Processor Lambda (Sharp)
+  # -------------------------------------------------------------
+  ProcessImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: processImage/
+      Handler: index.handler
+      MemorySize: 1024
+      EphemeralStorage:
+        Size: 1024
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ExistingBucketName
+
+  ImageLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ProcessImageFunction.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub "arn:aws:s3:::${ExistingBucketName}"
+
+  # -------------------------------------------------------------
+  # Video Processor Lambda (FFmpeg with Lambda Layer)
+  # -------------------------------------------------------------
+  ProcessVideoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: processVideo/
+      Handler: index.handler
+      MemorySize: 2048
+      EphemeralStorage:
+        Size: 3072 # 3GB /tmp for video transcode
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ExistingBucketName
+
+  VideoLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ProcessVideoFunction.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub "arn:aws:s3:::${ExistingBucketName}"
+
+Outputs:
+  ProcessImageFunctionArn:
+    Description: ARN of Image Processor Lambda
+    Value: !GetAtt ProcessImageFunction.Arn
+  ProcessVideoFunctionArn:
+    Description: ARN of Video Processor Lambda
+    Value: !GetAtt ProcessVideoFunction.Arn
+

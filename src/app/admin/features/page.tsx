@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { createManagedFeature } from './actions';
 import FeatureStatusSelector from './FeatureStatusSelector';
+import RegisterFeatureForm from './RegisterFeatureForm';
 import { Layers, Plus, EyeOff, FlaskConical, CheckCircle2, Info, Users } from 'lucide-react';
 import React from 'react';
 
@@ -23,7 +24,7 @@ const STATUS_INFO: Record<FeatureStatus, { label: string; colour: string; desc: 
   },
   enabled: {
     label: 'Enabled',
-    colour: 'bg-bg-status-successBg/15 text-brand-primary border-emerald-200',
+    colour: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     desc: 'Visible to all users',
   },
 };
@@ -35,6 +36,7 @@ export default async function FeaturesAdminPage() {
 
   await dbConnect();
   const features = await FeatureFlag.find({ category: 'feature' }).sort({ key: 1 }).lean();
+  const existingKeys = features.map((f: any) => f.key);
 
   return (
     <div className="space-y-8">
@@ -132,68 +134,7 @@ export default async function FeaturesAdminPage() {
         {/* Add Feature Form — only visible to editors */}
         {canEdit && (
           <div className="lg:col-span-4">
-            <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4 sticky top-6">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                <Plus className="h-4 w-4 text-brand-primary" />
-                Register New Feature
-              </h3>
-              <form action={createManagedFeature as any} className="space-y-3.5">
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
-                    Feature Key <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="key"
-                    required
-                    placeholder="e.g. living_services"
-                    className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
-                    Display Name <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="label"
-                    required
-                    placeholder="e.g. Living Services"
-                    className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
-                    Initial State
-                  </label>
-                  <select
-                    name="status"
-                    className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
-                  >
-                    <option value="disabled">Disabled (safe default)</option>
-                    <option value="testing">Testing (internal only)</option>
-                    <option value="enabled">Enabled (all users)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    placeholder="What feature does this toggle control?"
-                    className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary resize-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg py-2.5 text-xs font-semibold transition-colors"
-                >
-                  Register Feature
-                </button>
-              </form>
-            </div>
+            <RegisterFeatureForm existingKeys={existingKeys} />
           </div>
         )}
       </div>

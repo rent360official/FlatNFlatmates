@@ -355,10 +355,10 @@ export default function HowItWorks() {
                       </div>
                     </div>
                   </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900">Call, without sharing your number</h3>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900">Direct Connect</h3>
                 </div>
                 <p className="text-base text-gray-600 leading-relaxed pl-12 md:pl-0">
-                  Connect instantly through the app. Your phone number stays private — always.
+                  Reach out to verified flat owners and roommates directly via call or WhatsApp
                 </p>
               </div>
 
@@ -376,7 +376,7 @@ export default function HowItWorks() {
                 <div className="relative ml-12 md:ml-0" style={getTiltStyle(2)}>
                   {/* Floating decorative elements */}
                   <div className="absolute -top-6 -left-6 h-12 w-12 rounded-xl bg-white shadow-lg border border-gray-100/80 items-center justify-center text-brand-secondary animate-float hidden lg:flex z-10">
-                    <Lock className="h-5 w-5" />
+                    <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div className="absolute -bottom-6 -right-6 h-11 w-11 rounded-xl bg-white shadow-lg border border-gray-100/80 items-center justify-center text-brand-primary animate-float-delayed hidden lg:flex z-10">
                     <Phone className="h-4.5 w-4.5" />
@@ -401,25 +401,15 @@ export default function HowItWorks() {
                             transform: scale(1);
                             opacity: 0.25;
                           }
-                          50% {
-                            transform: scale(1.15);
-                            opacity: 0.45;
-                          }
                         }
                         @keyframes float {
                           0%, 100% {
                             transform: translateY(0px) rotate(0deg);
                           }
-                          50% {
-                            transform: translateY(-6px) rotate(2deg);
-                          }
                         }
                         @keyframes floatDelayed {
                           0%, 100% {
                             transform: translateY(0px) rotate(0deg);
-                          }
-                          50% {
-                            transform: translateY(6px) rotate(-2deg);
                           }
                         }
                         .animate-flow-dash {
@@ -447,10 +437,10 @@ export default function HowItWorks() {
                       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                         <div className="flex items-center space-x-2">
                           <span className="h-2 w-2 rounded-full bg-brand-primary animate-pulse" />
-                          <span className="text-[10px] font-bold tracking-wider text-brand-primary uppercase">Secure Connection</span>
+                          <span className="text-[10px] font-bold tracking-wider text-brand-primary uppercase">Verified Direct Connect</span>
                         </div>
-                        <span className="text-[9px] font-semibold text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded-full border border-brand-secondary/20">
-                          In-App Proxy
+                        <span className="text-[9px] font-semibold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full border border-brand-primary/20">
+                          Call • WhatsApp
                         </span>
                       </div>
 
@@ -465,25 +455,17 @@ export default function HowItWorks() {
                             </div>
                           </div>
                           <span className="text-[11px] font-semibold text-text-primary">You</span>
-                          <span className="text-[9px] text-text-secondary font-mono">+91 98*** *210</span>
                         </div>
 
-                        {/* Connection node (Proxy server) */}
+                        {/* Connection node */}
                         <div className="flex flex-col items-center space-y-1.5 z-10">
                           <div className="relative">
                             {/* Glowing pulse rings */}
                             <div className="absolute -inset-2 rounded-full bg-brand-primary/10 blur animate-pulse-glow" />
                             <div className="h-14 w-14 rounded-full bg-gradient-to-br from-brand-primary to-brand-tertiary border border-white flex items-center justify-center shadow-lg relative">
-                              <Lock className="h-5 w-5 text-white animate-bounce" style={{ animationDuration: '3s' }} />
-                              <span className="absolute -bottom-0.5 -right-0.5 bg-brand-primary text-white rounded-full p-0.5 border border-white/80">
-                                <ShieldCheck className="h-2.5 w-2.5" />
-                              </span>
+                              <ShieldCheck className="h-6 w-6 text-white" />
                             </div>
                           </div>
-                          <span className="text-[9px] font-semibold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full border border-brand-primary/20">
-                            Number Masked
-                          </span>
-                          <span className="text-[9px] font-mono text-text-secondary font-semibold">+91 80690 12345</span>
                         </div>
 
                         {/* Receiver */}
@@ -495,7 +477,6 @@ export default function HowItWorks() {
                             </div>
                           </div>
                           <span className="text-[11px] font-semibold text-text-primary">Pune Owner</span>
-                          <span className="text-[9px] text-text-secondary font-mono">+91 99*** *655</span>
                         </div>
 
                         {/* SVG Line with moving dash */}
@@ -514,17 +495,6 @@ export default function HowItWorks() {
                             </linearGradient>
                           </defs>
                         </svg>
-                      </div>
-
-                      {/* Footer call status */}
-                      <div className="bg-brand-primary/10 border border-brand-primary/20 rounded-xl p-2.5 flex items-center justify-between mt-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="p-1 bg-brand-primary/20 rounded">
-                            <Phone className="h-3 w-3 text-brand-primary" />
-                          </div>
-                          <span className="text-xs font-semibold text-brand-primary">In-App Call Connected</span>
-                        </div>
-                        <span className="text-[9px] text-brand-primary font-bold animate-pulse">● Active</span>
                       </div>
                     </div>
                   </div>

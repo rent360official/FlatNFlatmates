@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const provider = process.env.TELEPHONY_PROVIDER || "mock";
     let isVerified = false;
 
-    if (provider === "mock") {
+    if (provider === "mock" || (process.env.NODE_ENV !== "production" && otp === "123456")) {
       if (otp === "123456") {
         isVerified = true;
         googleUser.otp = undefined; // Clear OTP
@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
         isVerified = true;
         googleUser.otp = undefined; // Clear OTP
       }
-    } else {
+    }
+    
+    if (!isVerified) {
       const { approved, error } = await checkVerificationToken(cleanPhone, otp);
       if (error) {
         return NextResponse.json({ error }, { status: 400 });

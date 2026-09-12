@@ -1,6 +1,7 @@
 import dbConnect from "@/lib/db";
 import PointOfInterest from "@/models/PointOfInterest";
 import SearchWizard from "./SearchWizard";
+import { getActiveFacebookGroups } from "@/lib/facebookGroups";
 import React from "react";
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,7 @@ export default async function FlatsSearchPage({ searchParams }: { searchParams: 
   await dbConnect();
   
   const pois = await PointOfInterest.find({ isActive: true }).sort({ name: 1 }).lean();
+  const facebookGroups = await getActiveFacebookGroups();
 
   const serializedPois = pois.map((poi: any) => ({
     _id: poi._id.toString(),
@@ -20,7 +22,11 @@ export default async function FlatsSearchPage({ searchParams }: { searchParams: 
 
   return (
     <div className="w-full flex-grow flex flex-col">
-      <SearchWizard pois={serializedPois} initialLocality={searchParams?.locality} />
+      <SearchWizard
+        pois={serializedPois}
+        initialLocality={searchParams?.locality}
+        facebookGroups={facebookGroups}
+      />
     </div>
   );
 }

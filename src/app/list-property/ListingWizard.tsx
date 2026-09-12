@@ -28,10 +28,12 @@ export default function ListingWizard({
     maxImageSizeMb: 10,
   },
   initialProperty,
+  approveOnSave = false,
 }: {
   localities: Locality[];
   mediaConfig?: MediaUploadConfig;
   initialProperty?: any;
+  approveOnSave?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -105,6 +107,7 @@ export default function ListingWizard({
     waterSupplyType: 'municipal' | 'borewell' | 'tanker' | 'mixed';
     fiberAvailable: boolean;
     avgSpeedMbps: string | number;
+    allowWhatsappContact: boolean;
   }>({
     availableFrom: initialProperty?.availableFrom || new Date().toISOString().split('T')[0],
     minLeaseMonths: initialProperty?.minLeaseMonths !== undefined ? initialProperty.minLeaseMonths : 11,
@@ -117,6 +120,7 @@ export default function ListingWizard({
     waterSupplyType: initialProperty?.waterSupplyType || 'municipal',
     fiberAvailable: !!initialProperty?.fiberAvailable,
     avgSpeedMbps: initialProperty?.avgSpeedMbps !== undefined ? initialProperty.avgSpeedMbps : '',
+    allowWhatsappContact: initialProperty?.allowWhatsappContact !== false,
   });
 
   const [pricing, setPricing] = useState<{
@@ -278,6 +282,22 @@ export default function ListingWizard({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const checkVideoDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(video.duration || 0);
+      };
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(0);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -317,7 +337,8 @@ export default function ListingWizard({
           throw new Error(errData.error || "Failed to get presigned upload URL");
         }
 
-        const { uploadUrl, publicUrl } = await res.json();
+        const data = await res.json();
+        const { uploadUrl, publicUrl, rawKey, processedUrls } = data;
 
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -351,7 +372,10 @@ export default function ListingWizard({
           url: publicUrl,
           isCover: !hasCover,
           fileName: file.name,
-        });
+          rawKey,
+          status: "processing",
+          processedUrls,
+        } as any);
 
         setMedia(prev => ({ ...prev, images: [...newImages] }));
         clearFieldError("images");
@@ -391,6 +415,13 @@ export default function ListingWizard({
         continue;
       }
 
+      // Check duration <= 300s (5 minutes)
+      const durationSeconds = await checkVideoDuration(file);
+      if (durationSeconds > 300) {
+        setGlobalError(`"${file.name}" exceeds the maximum duration limit of 5 minutes (${Math.round(durationSeconds)}s). Videos must be 5 minutes or shorter.`);
+        continue;
+      }
+
       const fileId = `${file.name}-${Date.now()}`;
       setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
 
@@ -411,7 +442,8 @@ export default function ListingWizard({
           throw new Error(errData.error || "Failed to get presigned upload URL");
         }
 
-        const { uploadUrl, publicUrl } = await res.json();
+        const data = await res.json();
+        const { uploadUrl, publicUrl, rawKey, processedUrl, thumbnailUrl } = data;
 
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -444,7 +476,12 @@ export default function ListingWizard({
           url: publicUrl,
           fileName: file.name,
           sizeBytes: file.size,
-        });
+          rawKey,
+          status: "processing",
+          processedUrl,
+          thumbnailUrl,
+          durationSeconds: Math.round(durationSeconds),
+        } as any);
 
         setMedia(prev => ({ ...prev, videos: [...newVideos] }));
       } catch (err: any) {
@@ -616,6 +653,8 @@ export default function ListingWizard({
           fiberAvailable: propertyDetails.fiberAvailable,
           avgSpeedMbps: propertyDetails.avgSpeedMbps ? Number(propertyDetails.avgSpeedMbps) : undefined,
         },
+        allowWhatsappContact: propertyDetails.allowWhatsappContact,
+        makeLive: Boolean(approveOnSave),
       };
 
       const res = initialProperty?._id
@@ -624,12 +663,18 @@ export default function ListingWizard({
 
       if (res.success) {
         setPublishSuccessMessage(
-          initialProperty?._id
+          approveOnSave
+            ? "Listing updated & published LIVE successfully! Redirecting..."
+            : initialProperty?._id
             ? "Listing updated successfully! Redirecting..."
             : "Listing published successfully! Redirecting..."
         );
         setTimeout(() => {
-          router.push("/profile/properties");
+          if (approveOnSave && initialProperty?._id) {
+            router.push(`/flat/${initialProperty._id}`);
+          } else {
+            router.push("/profile/properties");
+          }
         }, 1200);
       } else {
         setGlobalError(res.error || (initialProperty?._id ? "Failed to update listing. Please check required fields." : "Failed to publish listing. Please check required fields."));
@@ -1617,6 +1662,21 @@ export default function ListingWizard({
                 </div>
               )}
             </div>
+
+            {/* WhatsApp Contact Permission Toggle */}
+            <div className="p-4 bg-slate-50 border rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-800">Enable Direct WhatsApp Inquiries</span>
+                <p className="text-[10px] text-slate-500">Allow prospective tenants to reach out directly via pre-written WhatsApp messages.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPropertyDetails({ ...propertyDetails, allowWhatsappContact: !propertyDetails.allowWhatsappContact })}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${propertyDetails.allowWhatsappContact ? "bg-brand-primary" : "bg-slate-200"}`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${propertyDetails.allowWhatsappContact ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1666,11 +1726,22 @@ export default function ListingWizard({
               type="button"
               onClick={handlePublish}
               disabled={isPending}
-              className="bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg px-6 py-2.5 text-xs font-bold transition-colors disabled:opacity-50 flex items-center shadow-sm"
+              className={`rounded-lg px-6 py-2.5 text-xs font-bold transition-all disabled:opacity-50 flex items-center shadow-sm ${
+                approveOnSave
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 ring-2 ring-emerald-400/40"
+                  : "bg-brand-primary hover:bg-brand-primaryHover text-white"
+              }`}
             >
-              {isPending
-                ? (initialProperty?._id ? "Saving Changes..." : "Publishing...")
-                : (initialProperty?._id ? "Save Changes" : "Publish Listing")}
+              {isPending ? (
+                <span>{approveOnSave ? "Saving & Activating..." : initialProperty?._id ? "Saving Changes..." : "Publishing..."}</span>
+              ) : approveOnSave ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  <span>Save & Make It Live</span>
+                </>
+              ) : (
+                <span>{initialProperty?._id ? "Save Changes" : "Publish Listing"}</span>
+              )}
             </button>
           )}
         </div>

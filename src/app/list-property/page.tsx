@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import dbConnect from "@/lib/db";
 import Locality from "@/models/Locality";
 import Property from "@/models/Property";
+import User from "@/models/User";
 import { getMediaUploadConfig } from "@/lib/mediaConfig";
 import ListingWizard from "./ListingWizard";
 import React from "react";
@@ -13,16 +14,23 @@ export const dynamic = 'force-dynamic';
 export default async function ListPropertyPage({
   searchParams,
 }: {
-  searchParams: { edit?: string };
+  searchParams: { edit?: string; approveOnSave?: string };
 }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    const callback = searchParams?.edit ? `/list-property?edit=${searchParams.edit}` : "/list-property";
+    const callback = searchParams?.edit
+      ? `/list-property?edit=${searchParams.edit}${searchParams.approveOnSave ? `&approveOnSave=${searchParams.approveOnSave}` : ''}`
+      : "/list-property";
     redirect(`/login?callbackUrl=${encodeURIComponent(callback)}`);
   }
 
   await dbConnect();
+  const currentUser = await User.findById((session.user as any).id).lean();
+  if (currentUser?.verificationStatus === 'rejected') {
+    redirect("/profile");
+  }
+
   const localities = await Locality.find({ isActive: true }).sort({ name: 1 }).lean();
   const mediaConfig = await getMediaUploadConfig();
 
@@ -103,6 +111,7 @@ export default async function ListPropertyPage({
         localities={serializedLocalities}
         mediaConfig={mediaConfig}
         initialProperty={initialProperty}
+        approveOnSave={Boolean(searchParams?.approveOnSave === 'true' || searchParams?.approveOnSave === '1')}
       />
     </div>
   );

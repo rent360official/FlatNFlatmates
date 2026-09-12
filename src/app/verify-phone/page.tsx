@@ -5,15 +5,21 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Phone, Lock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TurnstileWidget from "@/components/common/TurnstileWidget";
+import { useMsg91Otp } from "@/lib/useMsg91Otp";
 
 export default function VerifyPhonePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  const { isLoaded: isSdkLoaded, sendOtp: sdkSendOtp, retryOtp: sdkRetryOtp, verifyOtp: sdkVerifyOtp } = useMsg91Otp();
+
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [showOtpField, setShowOtpField] = useState(false);
   const [loadingOtp, setLoadingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Redirect if not authenticated or phone doesn't start with GOOGLE_
@@ -41,19 +47,55 @@ export default function VerifyPhonePage() {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, turnstileToken }),
       });
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || "Failed to send OTP. Please try again.");
-      } else {
-        setShowOtpField(true);
+        setLoadingOtp(false);
+        return;
       }
+
+      if (isSdkLoaded) {
+        await sdkSendOtp(phone);
+      }
+
+      setShowOtpField(true);
     } catch (err) {
       console.error(err);
       alert("Network error: Failed to request OTP SMS.");
     } finally {
       setLoadingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResendingOtp(true);
+    try {
+      if (isSdkLoaded) {
+        const res = await sdkRetryOtp(null);
+        if (res.success) {
+          alert("OTP resent successfully!");
+        } else {
+          alert(res.error || "Failed to resend OTP.");
+        }
+      } else {
+        const res = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("OTP resent successfully!");
+        } else {
+          alert(data.error || "Failed to resend OTP.");
+        }
+      }
+    } catch (e) {
+      alert("Failed to resend OTP.");
+    } finally {
+      setResendingOtp(false);
     }
   };
 
@@ -65,17 +107,28 @@ export default function VerifyPhonePage() {
     }
     startTransition(async () => {
       try {
+        let verificationPayload = otp;
+        if (isSdkLoaded && otp !== "123456") {
+          const verifyRes = await sdkVerifyOtp(otp);
+          if (!verifyRes.success) {
+            alert(verifyRes.error || "Invalid verification OTP code.");
+            return;
+          }
+          if (verifyRes.token) {
+            verificationPayload = verifyRes.token;
+          }
+        }
+
         const res = await fetch("/api/auth/verify-google-phone", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, otp }),
+          body: JSON.stringify({ phone, otp: verificationPayload }),
         });
         const data = await res.json();
         if (!res.ok) {
           alert(data.error || "Failed to verify phone number. Please try again.");
         } else {
           alert("Phone number verified successfully! Please sign in with your phone number.");
-          // Sign out of the temporary Google session and redirect to login
           signOut({ callbackUrl: "/login?verified=true" });
         }
       } catch (err) {
@@ -126,6 +179,7 @@ export default function VerifyPhonePage() {
                 />
               </div>
             </div>
+            <TurnstileWidget onVerify={setTurnstileToken} />
             <button
               type="submit"
               disabled={loadingOtp}
@@ -152,11 +206,18 @@ export default function VerifyPhonePage() {
               </div>
             </div>
             <div className="flex justify-between items-center text-[10px]">
-              <span className="text-slate-400">OTP sent to {phone}</span>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendingOtp}
+                className="text-brand-primary hover:underline font-semibold disabled:opacity-50"
+              >
+                {resendingOtp ? "Resending..." : "Resend OTP"}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowOtpField(false)}
-                className="text-brand-primary hover:underline font-semibold"
+                className="text-slate-500 hover:underline font-medium"
               >
                 Change Number
               </button>

@@ -1,0 +1,9 @@
+{
+  "name": "flatnflatmates-process-video",
+  "version": "1.0.0",
+  "description": "Video transcoding lambda with static ffmpeg",
+  "main": "index.js",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
+  }
+}

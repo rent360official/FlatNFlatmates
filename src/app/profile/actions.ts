@@ -164,3 +164,78 @@ export async function updateRoommateProfile(data: {
   }
 }
 
+import Property from "@/models/Property";
+import { BlacklistedPhone } from "@/models/BlacklistedPhone";
+
+export async function requestReverification(requestMessage: string) {
+  try {
+    const sessionUser = await getSessionUser();
+    if (!requestMessage || !requestMessage.trim()) {
+      throw new Error("Please provide a note explaining your re-verification request.");
+    }
+
+    await dbConnect();
+    const user = await User.findById(sessionUser.id);
+    if (!user) throw new Error("User not found");
+
+    if (user.verificationStatus !== 'rejected') {
+      throw new Error("Your account is not in rejected status.");
+    }
+
+    user.verificationStatus = 'pending';
+    user.reverificationRequestMessage = requestMessage.trim();
+    user.reverificationRequestedAt = new Date();
+    await user.save();
+
+    revalidatePath("/profile");
+    revalidatePath("/admin/users");
+    revalidatePath(`/admin/users/${user._id}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: getFriendlyErrorMessage(error, "Failed to submit re-verification request") };
+  }
+}
+
+export async function deleteMyAccount() {
+  try {
+    const sessionUser = await getSessionUser();
+    await dbConnect();
+
+    const user = await User.findById(sessionUser.id);
+    if (!user) throw new Error("User not found");
+
+    // If user was rejected, blacklist their phone number
+    if (user.verificationStatus === 'rejected') {
+      await BlacklistedPhone.findOneAndUpdate(
+        { phone: user.phone },
+        {
+          phone: user.phone,
+          rejectionReason: user.rejectionReason || "Account rejected by moderation prior to deletion",
+          blacklistedAt: user.rejectedAt || new Date(),
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    // Mark all owner properties as removed
+    await Property.updateMany(
+      { ownerId: sessionUser.id },
+      { $set: { status: 'removed' } }
+    );
+
+    // Deactivate flatmate profile listings
+    await FlatmateProfileListing.updateMany(
+      { userId: sessionUser.id },
+      { $set: { isActive: false } }
+    );
+
+    // Delete user record
+    await User.findByIdAndDelete(sessionUser.id);
+
+    return { success: true };
+  } catch (error: any) {
+    return { error: getFriendlyErrorMessage(error, "Failed to delete account") };
+  }
+}
+
+

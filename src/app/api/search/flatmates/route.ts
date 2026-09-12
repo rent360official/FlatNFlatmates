@@ -13,6 +13,7 @@ import Property from "@/models/Property";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { NextRequest, NextResponse } from "next/server";
+import { recordFlatmateSearchDemand } from "@/lib/demandTelemetry";
 
 // Haversine distance calculator in km
 function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -480,6 +481,30 @@ export async function GET(req: NextRequest) {
 
     // Sort by matchScore descending
     results.sort((a, b) => b.matchScore - a.matchScore);
+
+    // Record Demand Telemetry asynchronously
+    const searchAreaLabel = searchParams.get("searchAreaLabel") || searchParams.get("locality") || inputPois[0]?.label;
+    recordFlatmateSearchDemand(
+      {
+        searchIntent,
+        searchAreaLabel,
+        searchAreaLat: searchAreaLat ? parseFloat(searchAreaLat) : undefined,
+        searchAreaLng: searchAreaLng ? parseFloat(searchAreaLng) : undefined,
+        gender,
+        minBudget,
+        maxBudget,
+        cleanliness: searcherPrefs?.cleanliness,
+        foodPreference: searcherPrefs?.foodPreference,
+        userType: searcherPrefs?.userType,
+        profession: searcherPrefs?.profession,
+        shift: searcherPrefs?.shift,
+        socialType: searcherPrefs?.socialType,
+        gymGuy: searcherPrefs?.gymGuy,
+        outsideEater: searcherPrefs?.outsideEater,
+      },
+      results.length,
+      session?.user ? { id: (session.user as any).id, role: (session.user as any).role } : null
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, data: results });
   } catch (error: any) {
