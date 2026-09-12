@@ -7,6 +7,7 @@ export default function CallButton({ propertyId }: { propertyId: string }) {
   const [callInitiated, setCallInitiated] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+
   const [consented, setConsented] = useState(false);
 
   const handleCall = () => {
