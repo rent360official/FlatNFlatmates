@@ -53,36 +53,26 @@ export async function POST(req: NextRequest) {
       let rateLimit = await OtpRateLimit.findOne({ phone: cleanPhone });
 
       if (rateLimit) {
-        // Rule A: 60-second cooldown between requests
-        const msSinceLast = now.getTime() - new Date(rateLimit.lastRequestedAt).getTime();
-        if (msSinceLast < 60 * 1000) {
-          const remainingSeconds = Math.ceil((60 * 1000 - msSinceLast) / 1000);
-          return NextResponse.json(
-            { error: `Please wait ${remainingSeconds} seconds before requesting another OTP.` },
-            { status: 429 }
-          );
-        }
-
-        // Rule B: Hourly Cap (Max 3 OTPs per hour)
+        // Rule A: Hourly Cap (Max 8 OTPs per hour)
         if (rateLimit.hourlyWindowStart < oneHourAgo) {
           rateLimit.hourlyCount = 1;
           rateLimit.hourlyWindowStart = now;
         } else {
-          if (rateLimit.hourlyCount >= 3) {
+          if (rateLimit.hourlyCount >= 8) {
             return NextResponse.json(
-              { error: "Hourly limit exceeded. You can request at most 3 OTPs per hour for this number. Please try again later." },
+              { error: "Hourly limit exceeded. You can request at most 8 OTPs per hour for this number. Please try again later." },
               { status: 429 }
             );
           }
           rateLimit.hourlyCount += 1;
         }
 
-        // Rule C: Daily Cap (Max 5 OTPs per 24 hours)
+        // Rule B: Daily Cap (Max 15 OTPs per 24 hours)
         if (rateLimit.dailyWindowStart < oneDayAgo) {
           rateLimit.dailyCount = 1;
           rateLimit.dailyWindowStart = now;
         } else {
-          if (rateLimit.dailyCount >= 5) {
+          if (rateLimit.dailyCount >= 15) {
             return NextResponse.json(
               { error: "Daily limit reached for this phone number. Please try again tomorrow." },
               { status: 429 }

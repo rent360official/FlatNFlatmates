@@ -123,8 +123,14 @@ export async function updateMediaLimitsConfig(formData: FormData) {
       {
         key: "max_video_size_mb",
         label: "Max Video Size (MB)",
-        val: parseInt(formData.get("max_video_size_mb") as string, 10) || 100,
+        val: parseInt(formData.get("max_video_size_mb") as string, 10) || 5120,
         description: "Maximum file size allowed per uploaded video (in MB).",
+      },
+      {
+        key: "max_video_duration_minutes",
+        label: "Max Video Duration (Minutes)",
+        val: parseInt(formData.get("max_video_duration_minutes") as string, 10) || 10,
+        description: "Maximum duration allowed per uploaded video (in minutes).",
       },
       {
         key: "max_property_images",
@@ -135,7 +141,7 @@ export async function updateMediaLimitsConfig(formData: FormData) {
       {
         key: "max_image_size_mb",
         label: "Max Image Size (MB)",
-        val: parseInt(formData.get("max_image_size_mb") as string, 10) || 10,
+        val: parseInt(formData.get("max_image_size_mb") as string, 10) || 25,
         description: "Maximum file size allowed per uploaded image (in MB).",
       },
     ];

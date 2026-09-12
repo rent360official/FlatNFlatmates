@@ -29,12 +29,21 @@ async function uploadFileToS3(bucket, key, filePath, contentType) {
   await s3Client.send(command);
 }
 
-// Find ffmpeg binary path (from npm static package, Lambda layer /opt/bin/, or system PATH)
+// Find ffmpeg binary path (from npm static package, direct path, Lambda layer, or system PATH)
 function getBinaryPath(binaryName) {
+  const localStatic = path.join(__dirname, "node_modules", "ffmpeg-static", "ffmpeg");
+  if (fs.existsSync(localStatic)) {
+    try { fs.chmodSync(localStatic, 0o755); } catch (e) {}
+    return localStatic;
+  }
+
   try {
     if (binaryName === "ffmpeg") {
       const ffmpegStatic = require("ffmpeg-static");
-      if (ffmpegStatic && fs.existsSync(ffmpegStatic)) return ffmpegStatic;
+      if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
+        try { fs.chmodSync(ffmpegStatic, 0o755); } catch (e) {}
+        return ffmpegStatic;
+      }
     }
   } catch (e) {}
 

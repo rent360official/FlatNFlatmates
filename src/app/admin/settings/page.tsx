@@ -39,7 +39,7 @@ export default async function SettingsAdminPage() {
         </div>
 
         <form action={updateMediaLimitsConfig as any} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             
             {/* Max Videos */}
             <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
@@ -70,11 +70,29 @@ export default async function SettingsAdminPage() {
                 name="max_video_size_mb"
                 defaultValue={mediaConfig.maxVideoSizeMb}
                 min="5"
-                max="500"
+                max="5120"
                 required
                 className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
               />
-              <p className="text-[10px] text-slate-400">Default: 100 MB per video</p>
+              <p className="text-[10px] text-slate-400">Default: 5120 MB (5 GB)</p>
+            </div>
+
+            {/* Max Video Duration (Minutes) */}
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center">
+                <Film className="h-3.5 w-3.5 mr-1.5 text-brand-primary" />
+                Max Video Duration (Mins)
+              </label>
+              <input
+                type="number"
+                name="max_video_duration_minutes"
+                defaultValue={mediaConfig.maxVideoDurationMinutes}
+                min="1"
+                max="60"
+                required
+                className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
+              />
+              <p className="text-[10px] text-slate-400">Default: 10 minutes</p>
             </div>
 
             {/* Max Images */}
@@ -110,7 +128,7 @@ export default async function SettingsAdminPage() {
                 required
                 className="w-full text-xs font-semibold border rounded-lg px-3 py-2 bg-white outline-brand-primary"
               />
-              <p className="text-[10px] text-slate-400">Default: 10 MB per image</p>
+              <p className="text-[10px] text-slate-400">Default: 25 MB per image</p>
             </div>
 
           </div>
