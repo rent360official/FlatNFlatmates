@@ -83,7 +83,7 @@ export function useMsg91Otp() {
     };
 
     const scriptId = 'msg91-otp-provider-script';
-    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    const script = document.getElementById(scriptId) as HTMLScriptElement;
 
     if (!script) {
       const urls = [
