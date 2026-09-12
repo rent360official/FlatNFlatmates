@@ -1065,7 +1065,7 @@ export default function SearchWizard({
                 return (
                   <div className="absolute bottom-4 left-4 right-4 bg-white p-3 rounded-xl border shadow-lg z-20 flex items-center space-x-3 animate-in slide-in-from-bottom duration-200">
                     <img
-                      src={prop.images?.[0]?.url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80"}
+                      src={(prop.images?.[0] as any)?.processedUrls?.thumb || prop.images?.[0]?.url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80"}
                       className="h-14 w-18 object-cover rounded-lg border flex-shrink-0"
                       alt=""
                     />
@@ -1129,7 +1129,7 @@ export default function SearchWizard({
                       {/* Cover Photo */}
                       <div className="h-44 w-full relative bg-slate-100 overflow-hidden">
                         <img
-                          src={prop.images?.[0]?.url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80"}
+                          src={(prop.images?.[0] as any)?.processedUrls?.medium || prop.images?.[0]?.url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80"}
                           className="h-full w-full object-cover transition-transform duration-350 hover:scale-105"
                           alt=""
                         />

@@ -1181,9 +1181,10 @@ export default function FlatmateSearchWizard({
                   if (searchIntent === "ROOMMATE_WITH_FLAT" && seeker.property) {
                     // PROPERTY-FIRST CARD DESIGN
                     const prop = seeker.property;
+                    const coverImgObj = prop.images?.find((img: any) => img.isCover) || prop.images?.[0];
                     const coverImage =
-                      prop.images?.find((img: any) => img.isCover)?.url ||
-                      prop.images?.[0]?.url ||
+                      coverImgObj?.processedUrls?.medium ||
+                      coverImgObj?.url ||
                       "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80";
 
                     return (

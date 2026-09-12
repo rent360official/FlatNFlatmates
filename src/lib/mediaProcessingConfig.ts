@@ -25,7 +25,7 @@ export function buildS3Url(key: string): string {
 
 export function generateMediaPaths(propertyId: string, fileName: string, mediaType: "image" | "video") {
   const cleanName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const uuid = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const uuid = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
   
   if (mediaType === "image") {
     const rawKey = `raw/images/${propertyId}/${uuid}_${cleanName}`;

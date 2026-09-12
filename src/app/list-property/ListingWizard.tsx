@@ -369,11 +369,11 @@ export default function ListingWizard({
 
         const hasCover = newImages.some(img => img.isCover);
         newImages.push({
-          url: publicUrl,
+          url: processedUrls?.medium || publicUrl,
           isCover: !hasCover,
           fileName: file.name,
           rawKey,
-          status: "processing",
+          status: "ready",
           processedUrls,
         } as any);
 
@@ -633,9 +633,12 @@ export default function ListingWizard({
         houseRules,
         safetyFeatures,
         images: media.images.map(img => ({
-          url: img.url,
+          url: (img as any).processedUrls?.medium || img.url,
           isCover: img.isCover,
           fileName: img.fileName,
+          rawKey: (img as any).rawKey,
+          status: (img as any).status || "ready",
+          processedUrls: (img as any).processedUrls,
         })),
         videos: media.videos,
         tourVideoUrl: media.videos[0]?.url || undefined,
