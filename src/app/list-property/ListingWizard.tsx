@@ -367,9 +367,11 @@ export default function ListingWizard({
           xhr.send(file);
         });
 
+        const previewUrl = URL.createObjectURL(file);
         const hasCover = newImages.some(img => img.isCover);
         newImages.push({
           url: processedUrls?.medium || publicUrl,
+          previewUrl,
           isCover: !hasCover,
           fileName: file.name,
           rawKey,
@@ -1079,7 +1081,21 @@ export default function ListingWizard({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {media.images.map((img, idx) => (
                     <div key={idx} className="relative group rounded-xl overflow-hidden border bg-slate-100 shadow-sm aspect-video">
-                      <img src={img.url} alt={img.fileName} className="w-full h-full object-cover" />
+                      <img
+                        src={(img as any).previewUrl || img.url}
+                        alt={img.fileName || `Photo ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          const currentSrc = target.src;
+                          if (!target.dataset.retried) {
+                            target.dataset.retried = "1";
+                            setTimeout(() => {
+                              target.src = `${currentSrc}?t=${Date.now()}`;
+                            }, 1500);
+                          }
+                        }}
+                      />
 
                       {/* Cover Selection Overlay */}
                       <div className="absolute top-2 left-2 flex items-center space-x-1">

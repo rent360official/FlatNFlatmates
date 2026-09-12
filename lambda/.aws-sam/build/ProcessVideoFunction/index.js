@@ -1,4 +1,4 @@
-const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { exec, spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -124,6 +124,14 @@ exports.handler = async (event) => {
 
       console.log(`Uploading video thumbnail -> ${thumbnailKey}`);
       await uploadFileToS3(bucket, thumbnailKey, tmpThumb, "image/jpeg");
+
+      // 5.5. Delete raw video from S3 now that 720p version is saved
+      try {
+        await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: rawKey }));
+        console.log(`Successfully deleted raw S3 video: ${rawKey}`);
+      } catch (delErr) {
+        console.warn(`Could not delete raw S3 video ${rawKey}:`, delErr);
+      }
 
       // 6. Call complete callback endpoint
       const webhookUrl = `${appUrl}/api/internal/media/${uuid}/complete`;

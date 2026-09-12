@@ -1,4 +1,4 @@
-const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const sharp = require("sharp");
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-south-1" });
@@ -80,6 +80,14 @@ exports.handler = async (event) => {
           })
         );
         console.log(`Uploaded processed image size: ${size.name} -> ${processedKeys[size.name]}`);
+      }
+
+      // 3.5. Delete raw uncompressed S3 image now that 3 WebP sizes are successfully saved
+      try {
+        await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: rawKey }));
+        console.log(`Successfully deleted raw S3 image: ${rawKey}`);
+      } catch (delErr) {
+        console.warn(`Could not delete raw S3 image ${rawKey}:`, delErr);
       }
 
       // 4. Send internal complete webhook back to Next.js API
