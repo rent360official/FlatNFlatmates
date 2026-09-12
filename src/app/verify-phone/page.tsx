@@ -57,7 +57,12 @@ export default function VerifyPhonePage() {
       }
 
       if (isSdkLoaded) {
-        await sdkSendOtp(phone);
+        const sdkRes = await sdkSendOtp(phone);
+        if (!sdkRes.success && sdkRes.error) {
+          alert(sdkRes.error);
+          setLoadingOtp(false);
+          return;
+        }
       }
 
       setShowOtpField(true);

@@ -157,16 +157,25 @@ export async function POST(req: NextRequest) {
       console.log(`======================================================\n`);
       return NextResponse.json({ success: true, exists, message: "Mock OTP generated successfully" });
     } else {
-      // If MSG91_OTP_TEMPLATE_ID is present, invoke backend API; otherwise client Web SDK handles delivery
+      // Live telephony provider (MSG91 OTP Widget / Direct API)
       if (process.env.MSG91_OTP_TEMPLATE_ID) {
-        const { success, error } = await sendVerificationToken(cleanPhone);
-        if (!success) {
-          return NextResponse.json({ error: error || "Failed to trigger OTP verification" }, { status: 502 });
+        const res = await sendVerificationToken(cleanPhone);
+        if (!res.success) {
+          console.error("[Telephony Error in send-otp]:", res.error);
+          return NextResponse.json(
+            { error: res.error || "Failed to send OTP SMS. Please verify telephony configuration." },
+            { status: 502 }
+          );
         }
       }
 
       await user.save();
-      return NextResponse.json({ success: true, exists, useClientSdk: true, message: "Verification authorized. Proceed to OTP verification." });
+      return NextResponse.json({
+        success: true,
+        exists,
+        useWidget: true,
+        message: "Verification authorized. Proceed to OTP verification.",
+      });
     }
   } catch (error: any) {
     console.error("OTP send error:", error);

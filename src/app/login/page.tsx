@@ -52,8 +52,10 @@ function LoginForm() {
       // 2. Dispatch OTP via MSG91 Client Web SDK if loaded
       if (isSdkLoaded) {
         const sdkRes = await sdkSendOtp(phone);
-        if (!sdkRes.success) {
-          console.warn("[MSG91] SDK send error, falling back:", sdkRes.error);
+        if (!sdkRes.success && sdkRes.error) {
+          alert(sdkRes.error);
+          setLoadingOtp(false);
+          return;
         }
       }
 

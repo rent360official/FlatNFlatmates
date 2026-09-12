@@ -56,7 +56,7 @@ export function useMsg91Otp() {
       widgetId,
       tokenAuth,
       exposeMethods: true,
-      captchaRenderId: captchaId,
+      captchaRenderId: '',
       success: (data: any) => {
         console.log('✅ [MSG91 Widget] Global success:', data);
       },
@@ -131,10 +131,10 @@ export function useMsg91Otp() {
           const timer = setTimeout(() => {
             if (!resolved) {
               resolved = true;
-              console.log('[MSG91 Widget] sendOtp completed/timed out after 4s, proceeding to OTP form');
+              console.log('[MSG91 Widget] sendOtp timed out after 6s. Proceeding to OTP input.');
               resolve({ success: true });
             }
-          }, 4000);
+          }, 6000);
 
           try {
             window.sendOtp!(
