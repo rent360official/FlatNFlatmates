@@ -8,6 +8,7 @@ import User from "@/models/User";
 import City from "@/models/City";
 import { revalidatePath } from "next/cache";
 import { getFriendlyErrorMessage } from "@/lib/utils";
+import { getMediaUploadConfig } from "@/lib/mediaConfig";
 
 async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -68,6 +69,7 @@ export async function publishProperty(data: {
 
   // Contact preferences
   allowWhatsappContact?: boolean;
+  listerRelation?: 'owner' | 'broker' | 'flatmate';
 }) {
   try {
     const sessionUser = await getSessionUser();
@@ -84,8 +86,17 @@ export async function publishProperty(data: {
       throw new Error("Pune City reference data not found in DB. Run seed first.");
     }
 
+    const mediaConfig = await getMediaUploadConfig();
+    if (!data.images || data.images.length === 0) {
+      throw new Error("At least 1 property photo is required.");
+    }
+    if (data.images.length > mediaConfig.maxPropertyImages) {
+      throw new Error(`You can upload a maximum of ${mediaConfig.maxPropertyImages} photos. You provided ${data.images.length}.`);
+    }
+
     const property = await Property.create({
       ownerId: sessionUser.id,
+      listerRelation: data.listerRelation || 'owner',
       title: data.title,
       description: data.description,
       rentAmount: data.rentAmount,
@@ -198,6 +209,7 @@ export async function updateProperty(propertyId: string, data: {
 
   // Contact preferences
   allowWhatsappContact?: boolean;
+  listerRelation?: 'owner' | 'broker' | 'flatmate';
 
   // Activation flag
   makeLive?: boolean;
@@ -214,6 +226,14 @@ export async function updateProperty(propertyId: string, data: {
     // Verify ownership
     if (property.ownerId.toString() !== sessionUser.id && sessionUser.role !== 'admin') {
       throw new Error("Unauthorized: You do not have permission to edit this property");
+    }
+
+    const mediaConfig = await getMediaUploadConfig();
+    if (!data.images || data.images.length === 0) {
+      throw new Error("At least 1 property photo is required.");
+    }
+    if (data.images.length > mediaConfig.maxPropertyImages) {
+      throw new Error(`You can upload a maximum of ${mediaConfig.maxPropertyImages} photos. You provided ${data.images.length}.`);
     }
 
     property.title = data.title;
@@ -236,6 +256,9 @@ export async function updateProperty(propertyId: string, data: {
     property.tenantPreference = data.tenantPreference as any;
     property.brokerageFlag = data.brokerageFlag;
     property.brokerageAmount = data.brokerageAmount;
+    if (data.listerRelation) {
+      property.listerRelation = data.listerRelation;
+    }
     property.amenities = data.amenities;
     property.houseRules = data.houseRules;
     property.images = data.images as any;

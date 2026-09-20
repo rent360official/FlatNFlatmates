@@ -12,3 +12,18 @@ image_repositories = []
 
 [default.global.parameters]
 region = "ap-south-1"
+
+# ---------------------------------------------------------
+# Production Stack Configuration
+# ---------------------------------------------------------
+[prod.deploy.parameters]
+stack_name = "flatnflatmates-media-pipeline-prod"
+resolve_s3 = true
+s3_prefix = "flatnflatmates-media-pipeline-prod"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "ExistingBucketName=\"flatnflatmate-dir-prod\" AppUrl=\"https://flatnflatmates.in\" InternalMediaSecret=\"flatnflatmates_internal_media_secret_prod_key_2026\""
+image_repositories = []
+[prod.global.parameters]
+region = "ap-south-1"

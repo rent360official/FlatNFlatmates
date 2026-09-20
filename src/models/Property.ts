@@ -111,6 +111,7 @@ export interface IProperty extends Document {
 
   // --- Contact Preferences ---
   allowWhatsappContact?: boolean;
+  listerRelation?: 'owner' | 'broker' | 'flatmate';
 
   // --- Analytics & Tracking ---
   viewsCount?: number;
@@ -123,6 +124,11 @@ const PropertySchema: Schema<IProperty> = new Schema(
   {
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     allowWhatsappContact: { type: Boolean, default: true },
+    listerRelation: {
+      type: String,
+      enum: ['owner', 'broker', 'flatmate'],
+      default: 'owner',
+    },
     title: { type: String, required: true },
     description: { type: String, required: true },
     rentAmount: { type: Number, required: true },

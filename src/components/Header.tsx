@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import {
-  Menu, X, User, LogOut, ChevronDown, Plus, Sparkles, Home, ShieldAlert
+  Menu, X, User, LogOut, ChevronDown, Plus, Sparkles, Home, ShieldAlert, Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -51,6 +51,9 @@ export default function Header() {
   const visibleServices = featuresLoaded
     ? ALL_SERVICES.filter((s) => visibleFeatures.includes(s.key))
     : [];
+
+  // User avatar image helper
+  const userAvatar = session?.user?.image || (session?.user as any)?.profilePhoto;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
@@ -124,7 +127,18 @@ export default function Header() {
         </nav>
 
         {/* Right side actions */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-3">
+          {session && (
+            <Link
+              href="/profile/wishlist"
+              className="text-gray-600 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-slate-50 flex items-center space-x-1.5 text-xs font-semibold"
+              title="Saved Wishlist"
+            >
+              <Heart className="h-4 w-4 text-red-500 fill-red-500/20" />
+              <span className="hidden lg:inline">Wishlist</span>
+            </Link>
+          )}
+
           <Link href="/list-property">
             <Button variant="outline" className="border-brand-primary text-brand-primary hover:bg-brand-primary/10">
               <Plus className="mr-0 h-4 w-4" /> Post Property <span className="text-brand-primary font-semibold bg-brand-primary/10 rounded-sm text-xs px-2">Free</span>
@@ -141,8 +155,18 @@ export default function Header() {
                 </Link>
               )}
               <Link href="/profile" className="flex items-center space-x-1.5 text-sm font-medium text-gray-700 hover:text-brand-primary">
-                <div className="h-8 w-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary font-bold border border-brand-primary/20">
-                  {session.user?.name ? session.user.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+                <div className="h-8 w-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary font-bold border border-brand-primary/20 overflow-hidden">
+                  {userAvatar ? (
+                    <img
+                      src={userAvatar}
+                      alt={session.user?.name || "User"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : session.user?.name ? (
+                    session.user.name.charAt(0).toUpperCase()
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
                 </div>
               </Link>
               <button
@@ -163,8 +187,27 @@ export default function Header() {
         {/* Mobile menu toggle */}
         <div className="flex md:hidden items-center space-x-2">
           {session && (
-            <Link href="/profile" className="h-8 w-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary font-bold">
-              {session.user?.name ? session.user.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+            <Link
+              href="/profile/wishlist"
+              className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+              title="Wishlist"
+            >
+              <Heart className="h-5 w-5 text-red-500 fill-red-500/20" />
+            </Link>
+          )}
+          {session && (
+            <Link href="/profile" className="h-8 w-8 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary font-bold overflow-hidden border border-brand-primary/20">
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={session.user?.name || "User"}
+                  className="h-full w-full object-cover"
+                />
+              ) : session.user?.name ? (
+                session.user.name.charAt(0).toUpperCase()
+              ) : (
+                <User className="h-4 w-4" />
+              )}
             </Link>
           )}
           <button
@@ -179,6 +222,31 @@ export default function Header() {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b bg-white px-4 pb-4 pt-2 shadow-inner">
+          {session && (
+            <Link
+              href="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center space-x-3 p-2.5 mb-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition"
+            >
+              <div className="h-9 w-9 rounded-full bg-brand-primary/15 flex items-center justify-center text-brand-primary font-bold overflow-hidden border border-brand-primary/20 flex-shrink-0">
+                {userAvatar ? (
+                  <img
+                    src={userAvatar}
+                    alt={session.user?.name || "User"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : session.user?.name ? (
+                  session.user.name.charAt(0).toUpperCase()
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 truncate">{session.user?.name || "My Account"}</p>
+                <p className="text-[10px] text-slate-500 truncate">View Profile & Settings</p>
+              </div>
+            </Link>
+          )}
           <nav className="flex flex-col space-y-3">
             <Link
               href="/search/flats"
@@ -196,6 +264,17 @@ export default function Header() {
             >
               Find Flatmates
             </Link>
+            {session && (
+              <Link
+                href="/profile/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${isActive("/profile/wishlist") ? "bg-brand-primary/10 text-brand-primary" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+              >
+                <Heart className="mr-2 h-4 w-4 text-red-500 fill-red-500/20" />
+                Saved Wishlist
+              </Link>
+            )}
 
             {/* Visible service links on mobile */}
             {visibleServices.map((service) => {

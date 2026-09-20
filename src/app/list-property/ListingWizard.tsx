@@ -132,6 +132,7 @@ export default function ListingWizard({
     tenantPreference: string;
     brokerageFlag: boolean;
     brokerageAmount: number | string;
+    listerRelation: 'owner' | 'broker' | 'flatmate';
   }>({
     rentAmount: initialProperty?.rentAmount !== undefined ? initialProperty.rentAmount : "",
     depositAmount: initialProperty?.depositAmount !== undefined ? initialProperty.depositAmount : "",
@@ -140,7 +141,11 @@ export default function ListingWizard({
     tenantPreference: initialProperty?.tenantPreference || "any",
     brokerageFlag: !!initialProperty?.brokerageFlag,
     brokerageAmount: initialProperty?.brokerageAmount !== undefined ? initialProperty.brokerageAmount : "",
+    listerRelation: initialProperty?.listerRelation || "owner",
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -191,6 +196,7 @@ export default function ListingWizard({
       zoom: 15,
       disableDefaultUI: true,
       zoomControl: true,
+      gestureHandling: 'greedy',
       styles: mapStyles,
     });
     mapInstanceRef.current = map;
@@ -305,6 +311,7 @@ export default function ListingWizard({
 
     if (media.images.length + files.length > mediaConfig.maxPropertyImages) {
       setGlobalError(`You can upload a maximum of ${mediaConfig.maxPropertyImages} photos. You already have ${media.images.length}.`);
+      if (e.target) e.target.value = "";
       return;
     }
 
@@ -397,6 +404,7 @@ export default function ListingWizard({
     }
 
     setIsUploading(false);
+    if (e.target) e.target.value = "";
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -405,6 +413,7 @@ export default function ListingWizard({
 
     if (media.videos.length + files.length > mediaConfig.maxPropertyVideos) {
       setGlobalError(`You can upload a maximum of ${mediaConfig.maxPropertyVideos} videos. You already have ${media.videos.length}.`);
+      if (e.target) e.target.value = "";
       return;
     }
 
@@ -505,6 +514,7 @@ export default function ListingWizard({
     }
 
     setIsUploading(false);
+    if (e.target) e.target.value = "";
   };
 
   const handleAmenityToggle = (name: string) => {
@@ -608,7 +618,10 @@ export default function ListingWizard({
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    if (isSubmittingRef.current || isSubmitting || isPending) {
+      return;
+    }
     if (!validateStep(5)) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -623,7 +636,10 @@ export default function ListingWizard({
     }
 
     setGlobalError(null);
-    startTransition(async () => {
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+
+    try {
       const payload = {
         ...basics,
         floor: basics.floor !== "" && basics.floor !== undefined ? Number(basics.floor) : undefined,
@@ -687,8 +703,15 @@ export default function ListingWizard({
         }, 1200);
       } else {
         setGlobalError(res.error || (initialProperty?._id ? "Failed to update listing. Please check required fields." : "Failed to publish listing. Please check required fields."));
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
       }
-    });
+    } catch (err: any) {
+      console.error("Publishing error:", err);
+      setGlobalError(err.message || "An unexpected error occurred while saving the property.");
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   const stepsList = ["Basics", "Location", "Media", "Amenities", "Pricing & Publish"];
@@ -898,7 +921,7 @@ export default function ListingWizard({
               <MapPin className="mr-2 h-4.5 w-4.5 text-brand-primary" />
               Listing Location (Pune only)
             </h3>
-            <p className="text-[11px] text-slate-400">Select Pune locality nodes. GPS Coordinates are auto-resolved for testing.</p>
+            <p className="text-[11px] text-slate-400">Select your Pune locality and pin the exact property location on the map.</p>
           </div>
 
           <div className="space-y-3.5">
@@ -991,12 +1014,9 @@ export default function ListingWizard({
                 )}
               </div>
 
-              {/* Lat/Lng display and Auto geocode indicator */}
-              <div className="flex justify-between items-center text-[10px] text-slate-500">
+              {/* Auto geocode / drag indicator */}
+              <div className="flex items-center text-[10px] text-slate-500">
                 <span>Drag pin or click map to adjust exact spot</span>
-                <span className="font-mono bg-white border px-2 py-0.5 rounded shadow-sm font-extrabold text-slate-700">
-                  {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                </span>
               </div>
             </div>
           </div>
@@ -1624,6 +1644,48 @@ export default function ListingWizard({
               </div>
             </div>
 
+            {/* Relation to Property (Owner, Flatmate, Broker) */}
+            <div className="space-y-2">
+              <label className="block text-[10px] font-semibold text-slate-600 uppercase">
+                Your Relation to Property <span className="text-red-500 font-bold">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { value: "owner", label: "Owner", desc: "I own this property" },
+                  { value: "flatmate", label: "Flatmate", desc: "I stay here / seek flatmate" },
+                  { value: "broker", label: "Broker", desc: "I am an agent / broker" },
+                ].map((rel) => {
+                  const isSelected = pricing.listerRelation === rel.value;
+                  return (
+                    <button
+                      key={rel.value}
+                      type="button"
+                      onClick={() => setPricing({ ...pricing, listerRelation: rel.value as any })}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? "border-brand-primary bg-brand-primary/10 ring-1 ring-brand-primary"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className={`text-xs font-bold ${isSelected ? "text-brand-primary" : "text-slate-800"}`}>
+                          {rel.label}
+                        </span>
+                        <div
+                          className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                            isSelected ? "border-brand-primary bg-brand-primary" : "border-slate-300"
+                          }`}
+                        >
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block leading-tight">{rel.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Brokerage selector */}
             <div className="p-4 bg-slate-50 border rounded-xl space-y-3">
               <div className="flex items-center justify-between">
@@ -1743,15 +1805,18 @@ export default function ListingWizard({
             <button
               type="button"
               onClick={handlePublish}
-              disabled={isPending}
-              className={`rounded-lg px-6 py-2.5 text-xs font-bold transition-all disabled:opacity-50 flex items-center shadow-sm ${
+              disabled={isSubmitting || isPending}
+              className={`rounded-lg px-6 py-2.5 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm ${
                 approveOnSave
                   ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 ring-2 ring-emerald-400/40"
                   : "bg-brand-primary hover:bg-brand-primaryHover text-white"
               }`}
             >
-              {isPending ? (
-                <span>{approveOnSave ? "Saving & Activating..." : initialProperty?._id ? "Saving Changes..." : "Publishing..."}</span>
+              {(isSubmitting || isPending) ? (
+                <span className="flex items-center">
+                  <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  {approveOnSave ? "Saving & Activating..." : initialProperty?._id ? "Saving Changes..." : "Publishing..."}
+                </span>
               ) : approveOnSave ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-1.5" />

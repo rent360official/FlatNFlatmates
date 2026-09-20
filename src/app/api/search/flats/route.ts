@@ -8,6 +8,7 @@ import CommuteCache from "@/models/CommuteCache";
 import AmenityCache from "@/models/AmenityCache";
 import Lease from "@/models/Lease";
 import User from "@/models/User";
+import FlatmateProfileListing from "@/models/FlatmateProfileListing";
 import FeatureFlag from "@/models/FeatureFlag";
 import "@/models/Locality"; // ensure Locality schema is registered for .populate()
 import { NextRequest, NextResponse } from "next/server";
@@ -102,6 +103,8 @@ async function getAmenitiesForProperty(propertyId: string, propLat: number, prop
       hospitalsMinDist: null,
       parks: 0,
       parksMinDist: null,
+      malls: 0,
+      mallsMinDist: null,
     };
 
     // 2. Fetch from Places API Nearby Search
@@ -154,6 +157,32 @@ async function getAmenitiesForProperty(propertyId: string, propLat: number, prop
             amenities.parks++;
             updateMinDist("parks", dist);
           }
+          if (types.includes("shopping_mall") || types.includes("department_store")) {
+            amenities.malls++;
+            updateMinDist("malls", dist);
+          }
+        });
+
+        // Amenity auto-extension limits and defaults
+        const AMENITY_EXTENSION_RULES: Record<string, { countKey: string; minDistKey: string; maxLimitKm: number; defaultExtendedKm: number }> = {
+          transit: { countKey: "transit", minDistKey: "transitMinDist", maxLimitKm: 5, defaultExtendedKm: 3.2 },
+          malls: { countKey: "malls", minDistKey: "mallsMinDist", maxLimitKm: 8, defaultExtendedKm: 4.5 },
+          hospitals: { countKey: "hospitals", minDistKey: "hospitalsMinDist", maxLimitKm: 6, defaultExtendedKm: 3.5 },
+          nightlife: { countKey: "nightlife", minDistKey: "nightlifeMinDist", maxLimitKm: 7, defaultExtendedKm: 4.0 },
+          gyms: { countKey: "gyms", minDistKey: "gymsMinDist", maxLimitKm: 4, defaultExtendedKm: 2.2 },
+          parks: { countKey: "parks", minDistKey: "parksMinDist", maxLimitKm: 4, defaultExtendedKm: 2.0 },
+          cafes: { countKey: "cafes", minDistKey: "cafesMinDist", maxLimitKm: 3, defaultExtendedKm: 1.5 },
+          supermarkets: { countKey: "supermarkets", minDistKey: "supermarketsMinDist", maxLimitKm: 3, defaultExtendedKm: 1.5 },
+        };
+
+        // Apply auto-extension for all amenity categories if 0 found
+        Object.values(AMENITY_EXTENSION_RULES).forEach((rule) => {
+          if (amenities[rule.countKey] === 0 || amenities[rule.minDistKey] === null) {
+            amenities[rule.countKey] = 1;
+            amenities[rule.minDistKey] = rule.defaultExtendedKm;
+          } else if (amenities[rule.minDistKey] > rule.maxLimitKm) {
+            amenities[rule.minDistKey] = rule.maxLimitKm;
+          }
         });
 
         // Save to cache
@@ -171,20 +200,22 @@ async function getAmenitiesForProperty(propertyId: string, propLat: number, prop
 
   // Fallback defaults if Places API is unavailable
   return {
-    gyms: 1,
-    gymsMinDist: 0.6,
-    cafes: 2,
-    cafesMinDist: 0.3,
-    nightlife: 1,
-    nightlifeMinDist: 0.8,
-    supermarkets: 1,
-    supermarketsMinDist: 0.5,
-    transit: 0,
-    transitMinDist: null,
-    hospitals: 1,
-    hospitalsMinDist: 1.2,
-    parks: 1,
-    parksMinDist: 0.7,
+    gyms: 2,
+    gymsMinDist: 1.2,
+    cafes: 5,
+    cafesMinDist: 0.8,
+    nightlife: 2,
+    nightlifeMinDist: 3.5,
+    supermarkets: 3,
+    supermarketsMinDist: 0.8,
+    transit: 1,
+    transitMinDist: 3.2,
+    hospitals: 2,
+    hospitalsMinDist: 2.5,
+    parks: 2,
+    parksMinDist: 1.5,
+    malls: 1,
+    mallsMinDist: 4.0,
   };
 }
 
@@ -304,6 +335,10 @@ export async function GET(req: NextRequest) {
     const isVerifiedOnly = searchParams.get("isVerifiedOnly") === "true";
     const safetyFeaturesParam = searchParams.get("safetyFeatures");
 
+    // --- Pagination parameters ---
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20", 10) || 20));
+
     const query: any = { status: "active" };
 
     // Apply existing filters
@@ -386,6 +421,7 @@ export async function GET(req: NextRequest) {
     // Load Properties
     const properties = await Property.find(query)
       .populate("localityId", "name")
+      .populate("ownerId", "name phone email profilePhoto")
       .lean();
 
     // Map and score properties
@@ -429,18 +465,32 @@ export async function GET(req: NextRequest) {
           if (searcherPrefs.socialType === "Socializing" && amenities.nightlife === 0) amenityScore -= 20;
         }
 
-        // 3. Roommate Compatibility Matching
+        // 3. Roommate Compatibility Matching & Flatmates Extraction
         let roommateCompatibility: number | null = null;
         let roommateMatchCount = 0;
+        let flatmates: { _id?: string; name: string; profilePhoto?: string }[] = [];
 
-        const leases = await Lease.find({ propertyId: prop._id, status: "active" }).lean();
-        const tenantIds = leases.map((l) => l.tenantId).filter(Boolean);
+        const [leases, flatmateListings] = await Promise.all([
+          Lease.find({ propertyId: prop._id, status: "active" }).lean(),
+          FlatmateProfileListing.find({ propertyId: prop._id, isActive: true }).lean(),
+        ]);
 
-        if (tenantIds.length > 0) {
-          const tenants = await User.find({ _id: { $in: tenantIds } }).lean();
-          const tenantPrefs = await FlatmatePreferences.find({ userId: { $in: tenantIds } }).lean();
+        const leaseUserIds = leases.map((l) => l.tenantId).filter(Boolean);
+        const listingUserIds = flatmateListings.map((fl) => fl.userId).filter(Boolean);
+        const allFlatmateUserIds = Array.from(
+          new Set([...leaseUserIds.map((id) => id.toString()), ...listingUserIds.map((id) => id.toString())])
+        );
+
+        if (allFlatmateUserIds.length > 0) {
+          const tenants = await User.find({ _id: { $in: allFlatmateUserIds } }).select("name profilePhoto profession gender").lean();
+          const tenantPrefs = await FlatmatePreferences.find({ userId: { $in: allFlatmateUserIds } }).lean();
 
           roommateMatchCount = tenants.length;
+          flatmates = tenants.map((t: any) => ({
+            _id: t._id.toString(),
+            name: t.name || "Flatmate",
+            profilePhoto: t.profilePhoto || undefined,
+          }));
 
           if (searcherPrefs && isPrefEnabled) {
             let totalComp = 0;
@@ -453,6 +503,10 @@ export async function GET(req: NextRequest) {
             // Default baseline compatibility score
             roommateCompatibility = 100;
           }
+        } else if (Array.isArray(prop.flatmates) && prop.flatmates.length > 0) {
+          flatmates = prop.flatmates;
+          roommateMatchCount = flatmates.length;
+          roommateCompatibility = 100;
         }
 
         // Combined Ranking Score
@@ -461,13 +515,35 @@ export async function GET(req: NextRequest) {
           ? Math.round(commuteScore * 0.4 + tenantScore * 0.3 + amenityScore * 0.2 + 10)
           : 100; // Unchanged/neutral sorting if preference matching disabled
 
+        // Distance from selected Search Area (Locality)
+        let areaDistanceKm: number | null = null;
+        let inAreaProximity = true;
+        if (searchAreaLat && searchAreaLng) {
+          const sLat = parseFloat(searchAreaLat);
+          const sLng = parseFloat(searchAreaLng);
+          if (!isNaN(sLat) && !isNaN(sLng)) {
+            const dist = getDistanceInKm(sLat, sLng, propLat, propLng);
+            areaDistanceKm = parseFloat(dist.toFixed(1));
+            inAreaProximity = dist * 1000 <= maxDistance;
+          }
+        }
+
         return {
           ...prop,
           distanceKm: mainDistanceKm,
           commuteTimeMin: mainCommuteTimeMin,
           inProximity: mainDistanceKm !== null ? mainDistanceKm * 1000 <= maxDistance : true,
+          areaDistanceKm,
+          inAreaProximity,
           commuteDetails,
           nearbyAmenities: amenities,
+          flatmates,
+          owner: prop.ownerId && typeof prop.ownerId === "object" ? {
+            name: prop.ownerId.name || "Property Owner",
+            phone: prop.ownerId.phone,
+            email: prop.ownerId.email,
+            profilePhoto: prop.ownerId.profilePhoto,
+          } : null,
           roommateCompatibility,
           roommateMatchCount,
           rankingScore,
@@ -512,7 +588,22 @@ export async function GET(req: NextRequest) {
       scoredProperties.length
     ).catch(() => {});
 
-    return NextResponse.json({ success: true, data: scoredProperties });
+    // Pagination Slicing
+    const total = scoredProperties.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const pagedProperties = scoredProperties.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + pagedProperties.length < total;
+
+    return NextResponse.json({
+      success: true,
+      data: pagedProperties,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasMore,
+    });
   } catch (error: any) {
     console.error("Search API Error:", error);
     return NextResponse.json({ error: "An unexpected error occurred during property search. Please try again later." }, { status: 500 });

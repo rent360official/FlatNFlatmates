@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/db";
 import PointOfInterest from "@/models/PointOfInterest";
+import Locality from "@/models/Locality";
 import SearchWizard from "./SearchWizard";
 import { getActiveFacebookGroups } from "@/lib/facebookGroups";
 import React from "react";
@@ -10,6 +11,7 @@ export default async function FlatsSearchPage({ searchParams }: { searchParams: 
   await dbConnect();
   
   const pois = await PointOfInterest.find({ isActive: true }).sort({ name: 1 }).lean();
+  const dbLocalities = await Locality.find({ isActive: true }).sort({ name: 1 }).limit(5).lean();
   const facebookGroups = await getActiveFacebookGroups();
 
   const serializedPois = pois.map((poi: any) => ({
@@ -20,12 +22,21 @@ export default async function FlatsSearchPage({ searchParams }: { searchParams: 
     lng: poi.location.coordinates[0],
   }));
 
+  const serializedLocalities = dbLocalities.map((loc: any) => ({
+    _id: loc._id.toString(),
+    name: loc.name,
+    label: `${loc.name}, Pune, Maharashtra, India`,
+    lat: loc.location?.coordinates ? loc.location.coordinates[1] : 18.5204,
+    lng: loc.location?.coordinates ? loc.location.coordinates[0] : 73.8567,
+  }));
+
   return (
     <div className="w-full flex-grow flex flex-col">
       <SearchWizard
         pois={serializedPois}
         initialLocality={searchParams?.locality}
         facebookGroups={facebookGroups}
+        popularLocalities={serializedLocalities}
       />
     </div>
   );

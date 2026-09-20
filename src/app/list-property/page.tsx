@@ -87,6 +87,7 @@ export default async function ListPropertyPage({
           tenantPreference: propDoc.tenantPreference || "any",
           brokerageFlag: !!propDoc.brokerageFlag,
           brokerageAmount: propDoc.brokerageAmount || "",
+          listerRelation: propDoc.listerRelation || "owner",
         };
       }
     }

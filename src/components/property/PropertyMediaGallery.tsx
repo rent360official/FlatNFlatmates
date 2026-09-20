@@ -153,12 +153,7 @@ export default function PropertyMediaGallery({
       <div className="hidden md:grid md:grid-cols-12 gap-4 h-[480px] lg:h-[520px]">
         {/* Main Big Display (Left) - Porcelain background */}
         <div className="md:col-span-8 lg:col-span-9 bg-[#FAF9F6] rounded-2xl overflow-hidden relative border border-slate-200/90 flex items-center justify-center group shadow-sm">
-          {/* Zero Brokerage Badge */}
-          {!brokerageFlag && (
-            <span className="absolute top-4 left-4 z-10 bg-emerald-600 text-white font-extrabold text-[10px] px-3 py-1 rounded-lg shadow-md border border-emerald-500 uppercase tracking-wider pointer-events-none">
-              Zero Brokerage
-            </span>
-          )}
+
 
           {/* Processing Indicator */}
           {activeItem.status === "processing" && (
@@ -348,12 +343,7 @@ export default function PropertyMediaGallery({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Zero Brokerage Badge */}
-          {!brokerageFlag && (
-            <span className="absolute top-3 left-3 z-10 bg-emerald-600 text-white font-extrabold text-[9px] px-2.5 py-0.5 rounded-lg shadow-md border border-emerald-500 uppercase tracking-wider pointer-events-none">
-              Zero Brokerage
-            </span>
-          )}
+
 
           {/* Processing Indicator */}
           {activeItem.status === "processing" && (

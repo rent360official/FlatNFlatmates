@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { updatePersonalInfo, requestReverification, deleteMyAccount } from "./actions";
-import { signOut } from "next-auth/react";
-import { AlertTriangle, ShieldAlert, RefreshCw, Trash2, CheckCircle2, Clock } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { AlertTriangle, ShieldAlert, RefreshCw, Trash2, CheckCircle2, Clock, Camera, User, Upload, X } from "lucide-react";
+import SquareImageCropperModal from "@/components/profile/SquareImageCropperModal";
 import React from "react";
 
 interface ProfileFormProps {
@@ -11,6 +12,7 @@ interface ProfileFormProps {
     name?: string;
     phone: string;
     email?: string;
+    profilePhoto?: string;
     age?: number;
     gender?: string;
     profession?: string;
@@ -27,14 +29,23 @@ interface ProfileFormProps {
 }
 
 export default function ProfileForm({ initialUser }: ProfileFormProps) {
+  const { data: session, update: updateSession } = useSession();
+
   const [name, setName] = useState(initialUser.name || "");
   const [email, setEmail] = useState(initialUser.email || "");
+  const [profilePhoto, setProfilePhoto] = useState(initialUser.profilePhoto || "");
   const [age, setAge] = useState(initialUser.age ? initialUser.age.toString() : "");
   const [gender, setGender] = useState(initialUser.gender || "male");
   const [profession, setProfession] = useState(initialUser.profession || "");
   const [bio, setBio] = useState(initialUser.bio || "");
   const [hobbies, setHobbies] = useState(initialUser.hobbies?.join(", ") || "");
   const [flatPreferences, setFlatPreferences] = useState(initialUser.flatPreferences?.join(", ") || "");
+
+  // Photo Cropping & Upload State
+  const [rawImageToCrop, setRawImageToCrop] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const getVibeVal = (prefix: string) => {
     const found = initialUser.vibePreferences?.find(vp => vp.startsWith(prefix));
@@ -58,6 +69,106 @@ export default function ProfileForm({ initialUser }: ProfileFormProps) {
   // Delete account confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Trigger file browser for photo upload
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE_MB = 25;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setPhotoMessage({
+        type: 'error',
+        text: `Image size exceeds the maximum limit of ${MAX_SIZE_MB}MB. Please select a smaller image.`,
+      });
+      e.target.value = "";
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoMessage({ type: 'error', text: "Please select a valid image file (PNG, JPG, WEBP)." });
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawImageToCrop(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input value so same file can be re-selected if cancelled
+    e.target.value = "";
+  };
+
+  // Handle saving cropped photo to S3
+  const handleCropComplete = async (croppedBase64: string) => {
+    setRawImageToCrop(null);
+    setIsUploadingPhoto(true);
+    setPhotoMessage(null);
+
+    // Optimistic UI update
+    setProfilePhoto(croppedBase64);
+
+    try {
+      const res = await fetch("/api/profile/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: croppedBase64 }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to upload photo to S3");
+      }
+
+      setProfilePhoto(data.profilePhoto);
+      setPhotoMessage({ type: 'success', text: "Profile photo updated successfully!" });
+
+      // Update NextAuth session image if available
+      if (updateSession) {
+        updateSession({ image: data.profilePhoto });
+      }
+    } catch (err: any) {
+      console.error("Profile photo upload error:", err);
+      setPhotoMessage({ type: 'error', text: err.message || "Failed to upload photo. Please try again." });
+      setProfilePhoto(initialUser.profilePhoto || "");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // Handle removing profile photo
+  const handleRemovePhoto = async () => {
+    if (!confirm("Are you sure you want to remove your profile photo?")) return;
+
+    setIsUploadingPhoto(true);
+    setPhotoMessage(null);
+
+    try {
+      const res = await fetch("/api/profile/photo", {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to remove photo");
+      }
+
+      setProfilePhoto("");
+      setPhotoMessage({ type: 'success', text: "Profile photo removed." });
+
+      if (updateSession) {
+        updateSession({ image: "" });
+      }
+    } catch (err: any) {
+      console.error("Profile photo removal error:", err);
+      setPhotoMessage({ type: 'error', text: err.message || "Failed to remove photo." });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +229,109 @@ export default function ProfileForm({ initialUser }: ProfileFormProps) {
 
   return (
     <div className="space-y-6 max-w-2xl font-sans">
+      
+      {/* Interactive 1:1 Square Cropper Modal */}
+      {rawImageToCrop && (
+        <SquareImageCropperModal
+          imageSrc={rawImageToCrop}
+          onCropComplete={handleCropComplete}
+          onClose={() => setRawImageToCrop(null)}
+        />
+      )}
+
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoSelect}
+        accept="image/png, image/jpeg, image/jpg, image/webp"
+        className="hidden"
+      />
+
+      {/* Profile Photo Upload Card */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
+        <div>
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Profile Photo</h3>
+        </div>
+
+        {photoMessage && (
+          <div
+            className={`p-2.5 rounded-xl text-xs font-semibold ${
+              photoMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}
+          >
+            {photoMessage.text}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* Avatar Container in 1:1 Cover Mode */}
+          <div className="relative group self-start sm:self-auto">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 shadow-inner flex items-center justify-center relative">
+              {profilePhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt={name || "User profile photo"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-2xl">
+                  {name ? name.charAt(0).toUpperCase() : <User className="w-8 h-8 text-brand-primary" />}
+                </div>
+              )}
+
+              {/* Hover Camera Overlay Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="absolute inset-0 bg-black/40 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full backdrop-blur-xs cursor-pointer"
+                title="Change photo"
+              >
+                <Camera className="w-5 h-5 mb-0.5" />
+                <span className="text-[9px] font-semibold">Change</span>
+              </button>
+            </div>
+
+            {/* Spinner indicator when uploading */}
+            {isUploadingPhoto && (
+              <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center backdrop-blur-xs">
+                <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-2 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={isUploadingPhoto}
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow-2xs disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{profilePhoto ? "Change Photo" : "Upload Photo"}</span>
+              </button>
+
+              {profilePhoto && (
+                <button
+                  type="button"
+                  disabled={isUploadingPhoto}
+                  onClick={handleRemovePhoto}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 transition disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Rejection Alert Banner */}
       {isRejected && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-3 shadow-xs">

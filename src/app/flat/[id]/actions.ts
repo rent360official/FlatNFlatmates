@@ -16,20 +16,14 @@ import { isFeatureActive } from "@/lib/featureAccess";
 export async function recordPropertyCallAction(propertyId: string): Promise<{
   success: boolean;
   telUrl?: string;
+  phone?: string;
   requireLogin?: boolean;
   error?: string;
 }> {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return {
-        success: false,
-        requireLogin: true,
-        error: "Please sign in to call the property owner.",
-      };
-    }
-
     await dbConnect();
+
     const property = await Property.findById(propertyId);
     if (!property) {
       return { success: false, error: "Property not found" };
@@ -40,11 +34,11 @@ export async function recordPropertyCallAction(propertyId: string): Promise<{
       return { success: false, error: "Owner contact unavailable" };
     }
 
-    const userId = (session.user as any)?.id;
-    const userName = (session.user as any)?.name || "Seeker";
-    const userPhone = (session.user as any)?.phone;
+    const userId = (session?.user as any)?.id;
+    const userName = (session?.user as any)?.name || "Seeker";
+    const userPhone = (session?.user as any)?.phone;
 
-    // Log call inquiry to database so owner can view call counts
+    // Log call inquiry to database so owner can view call counts in analytics
     await PropertyInquiry.create({
       propertyId: property._id,
       ownerId: property.ownerId,
@@ -58,6 +52,7 @@ export async function recordPropertyCallAction(propertyId: string): Promise<{
     const formattedPhone = formatE164Phone(owner.phone);
     return {
       success: true,
+      phone: owner.phone,
       telUrl: `tel:${formattedPhone}`,
     };
   } catch (error: any) {
@@ -71,28 +66,27 @@ export async function recordPropertyCallAction(propertyId: string): Promise<{
  */
 export async function recordPropertyWhatsappAction(propertyId: string): Promise<{
   success: boolean;
+  phone?: string;
   requireLogin?: boolean;
   error?: string;
 }> {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return {
-        success: false,
-        requireLogin: true,
-        error: "Please sign in to message the property owner on WhatsApp.",
-      };
-    }
-
     await dbConnect();
+
     const property = await Property.findById(propertyId);
     if (!property) {
       return { success: false, error: "Property not found" };
     }
 
-    const userId = (session.user as any)?.id;
-    const userName = (session.user as any)?.name || "Seeker";
-    const userPhone = (session.user as any)?.phone;
+    const owner = await User.findById(property.ownerId);
+    if (!owner || !owner.phone) {
+      return { success: false, error: "Owner contact unavailable" };
+    }
+
+    const userId = (session?.user as any)?.id;
+    const userName = (session?.user as any)?.name || "Seeker";
+    const userPhone = (session?.user as any)?.phone;
 
     // Log WhatsApp inquiry
     await PropertyInquiry.create({
@@ -105,7 +99,10 @@ export async function recordPropertyWhatsappAction(propertyId: string): Promise<
       smsStatus: 'n/a',
     });
 
-    return { success: true };
+    return {
+      success: true,
+      phone: owner.phone,
+    };
   } catch (error: any) {
     console.error("Error recording WhatsApp action:", error);
     return { success: false, error: "Failed to record inquiry" };

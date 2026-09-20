@@ -350,7 +350,7 @@ export default function ApprovePropertyClient({
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Brokerage</div>
                   <div className="mt-1 font-bold text-slate-800">
-                    {property.brokerageFlag ? `₹${property.brokerageAmount}` : 'Zero Brokerage'}
+                    {property.brokerageFlag ? `₹${property.brokerageAmount}` : 'No Brokerage'}
                   </div>
                 </div>
               </div>
