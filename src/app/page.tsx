@@ -10,11 +10,20 @@ import { Button } from "@/components/ui/button";
 import HowItWorks from "@/components/HowItWorks";
 import HeroMapSection from "@/components/HeroMapSection/HeroMapSection";
 
+interface RegisteredLocality {
+  _id: string;
+  name: string;
+  lat?: number;
+  lng?: number;
+}
+
 export default function Home() {
   const [hasVibeUpgrade, setHasVibeUpgrade] = useState(false);
   const [featuresLoaded, setFeaturesLoaded] = useState(false);
+  const [localities, setLocalities] = useState<RegisteredLocality[]>([]);
+  const [localitiesLoading, setLocalitiesLoading] = useState(true);
 
-  // Fetch feature flags to check if Vibe Upgrade is visible/enabled
+  // Fetch feature flags to check if Vibe Upgrade is visible/enabled and registered localities
   useEffect(() => {
     fetch('/api/features/visible')
       .then((r) => r.json())
@@ -25,6 +34,20 @@ export default function Home() {
       })
       .catch(() => {
         setFeaturesLoaded(true);
+      });
+
+    fetch('/api/localities?city=Pune')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.localities)) {
+          setLocalities(data.localities);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load registered localities:', err);
+      })
+      .finally(() => {
+        setLocalitiesLoading(false);
       });
   }, []);
 
@@ -103,28 +126,34 @@ export default function Home() {
       </section>
 
       {/* Pune Localities Section */}
-      <section className="bg-gray-50 py-16 lg:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="max-w-2xl mx-auto space-y-3 mb-10">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Popular Localities in Pune</h2>
-            <p className="text-gray-600">Quickly find flats and roommates in the major student and IT clusters.</p>
-          </div>
+      {(!localitiesLoading && localities.length > 0) && (
+        <section className="bg-gray-50 py-16 lg:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+            <div className="max-w-2xl mx-auto space-y-3 mb-10">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900">Popular Localities in Pune</h2>
+              <p className="text-gray-600">Quickly find flats and roommates in the major student and IT clusters.</p>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            {['Hinjewadi', 'Viman Nagar', 'Baner', 'Koregaon Park', 'Kharadi', 'Aundh', 'Kothrud', 'Kalyani Nagar'].map((loc) => (
-              <Link key={loc} href={`/search/flats?locality=${loc}`} className="group bg-white border hover:border-brand-primary rounded-xl p-4 transition-all duration-200 hover:shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-gray-700 group-hover:text-brand-primary font-medium">
-                    <MapPin className="h-4 w-4 text-brand-primary" />
-                    <span>{loc}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+              {localities.map((loc) => (
+                <Link
+                  key={loc._id}
+                  href={`/search/flats?locality=${encodeURIComponent(loc.name)}`}
+                  className="group bg-white border hover:border-brand-primary rounded-xl p-4 transition-all duration-200 hover:shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-gray-700 group-hover:text-brand-primary font-medium">
+                      <MapPin className="h-4 w-4 text-brand-primary flex-shrink-0" />
+                      <span className="truncate">{loc.name}</span>
+                    </div>
+                    <ArrowRight className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                   </div>
-                  <ArrowRight className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA Onboard Section */}
       <section className="bg-white py-16 lg:py-20 border-t">

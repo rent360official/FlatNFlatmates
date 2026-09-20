@@ -8,8 +8,12 @@ import AmenityCache from "@/models/AmenityCache";
 import FlatmateProfileListing from "@/models/FlatmateProfileListing";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import FlatBackButton from "./FlatBackButton";
 import PropertyContactActions from "@/components/property/PropertyContactActions";
 import PropertyMediaGallery, { MediaItem } from "@/components/property/PropertyMediaGallery";
+import PropertyCommuteSection from "./PropertyCommuteSection";
+import PropertyNeighborhoodSection from "./PropertyNeighborhoodSection";
+import ReportPropertyModal from "@/components/property/ReportPropertyModal";
 import { 
   Navigation, ArrowLeft, Sparkles, Check, Film
 } from "lucide-react";
@@ -143,7 +147,12 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
   const isInterestSmsEnabled = await isFeatureActive('property_interest_sms', (session?.user as any)?.role);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* Top Back Navigation */}
+      <div className="flex items-center justify-between">
+        <FlatBackButton />
+      </div>
+
       {/* Property Media Gallery (Images + Videos, Desktop Split, Mobile Swipe Carousel, Lightbox Fullscreen) */}
       <PropertyMediaGallery
         media={mediaList}
@@ -168,6 +177,10 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
               <span>Locality: {(property.localityId as any)?.name || "N/A"}, Pune</span>
               <span>•</span>
               <span>Furnishing: {property.furnishingStatus.replace('_', ' ')}</span>
+              <span>•</span>
+              <span className="inline-flex items-center bg-slate-900 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-xs uppercase tracking-wide">
+                Listed by {property.listerRelation === 'broker' ? 'Broker' : property.listerRelation === 'flatmate' ? 'Flatmate' : 'Owner'}
+              </span>
             </div>
           </div>
 
@@ -351,62 +364,16 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
             </div>
           </div>
 
-          {/* Commute Distances Locator */}
-          <div className="space-y-4 border-t pt-6">
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Commute Landmark Distances</h3>
-              <p className="text-[11px] text-slate-400">Exact coordinates distance mapping to main Pune transit & office nodes.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {nearbyPois.map((poi: any) => (
-                <div key={poi._id.toString()} className="flex items-start space-x-3 p-3 bg-slate-50 border rounded-xl">
-                  <div className="p-2 bg-brand-primary/10 text-brand-primary rounded mt-0.5">
-                    <Navigation className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-850">{poi.name}</h4>
-                    <p className="text-[10px] text-slate-400 block capitalize">{poi.type} node</p>
-                    <span className="text-[10px] font-bold text-brand-primaryHover block mt-1">
-                      {poi.distanceKm} km away (~{poi.commuteTimeMin} mins driving)
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Commute Landmark Distances & Interactive Map */}
+          <PropertyCommuteSection
+            propertyLocation={{ lat: propLat, lng: propLng }}
+            propertyTitle={property.title}
+            propertyAddress={property.addressLine}
+            defaultNearbyPois={nearbyPois}
+          />
 
           {/* Neighborhood Amenities */}
-          {amenities && (
-            <div className="space-y-4 border-t pt-6">
-              <div className="space-y-1">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Neighborhood Amenities</h3>
-                <p className="text-[11px] text-slate-400">Nearby establishments mapped within 1.5 km of this property location.</p>
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: "Gyms", val: amenities.gyms, minDist: (amenities as any).gymsMinDist, icon: "🏋️" },
-                  { label: "Cafés/Eateries", val: amenities.cafes, minDist: (amenities as any).cafesMinDist, icon: "🍕" },
-                  { label: "Supermarkets", val: amenities.supermarkets, minDist: (amenities as any).supermarketsMinDist, icon: "🛒" },
-                  { label: "Transit Points", val: amenities.transit, minDist: (amenities as any).transitMinDist, icon: "🚇" },
-                  { label: "Hospitals/Clinics", val: amenities.hospitals, minDist: (amenities as any).hospitalsMinDist, icon: "🏥" },
-                  { label: "Parks/Greenery", val: amenities.parks, minDist: (amenities as any).parksMinDist, icon: "🌳" },
-                  { label: "Nightlife/Bars", val: amenities.nightlife, minDist: (amenities as any).nightlifeMinDist, icon: "🍺" },
-                ].filter(item => typeof item.val === 'number' && item.val > 0).map((item) => (
-                  <div key={item.label} className="p-3 bg-slate-50 border rounded-xl flex items-center space-x-2.5">
-                    <span className="text-xl">{item.icon}</span>
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-800">{item.val} {item.label}</span>
-                      <span className="text-[9px] text-slate-400 block font-medium">
-                        {item.minDist ? `Closest: ${item.minDist} km` : "Nearby"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <PropertyNeighborhoodSection amenities={amenities} />
         </div>
 
         {/* Action Panel Column */}
@@ -451,7 +418,7 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                       <span className="text-[9px] text-slate-400 block">{flatmateUser.profession || "Flatmate seeker"} • {flatmateUser.age} yrs</span>
                     </div>
                   </div>
-                  <Link href={`/flatmate/${flatmateUser._id.toString()}`} className="block">
+                  <Link href={`/flatmate/${flatmateUser._id.toString()}?from=/flat/${property._id.toString()}`} className="block">
                     <button className="w-full bg-brand-primary hover:bg-brand-primaryHover text-white rounded-lg py-2 text-xs font-semibold transition-colors flex items-center justify-center space-x-1 shadow-sm">
                       <Sparkles className="h-3.5 w-3.5 text-brand-primary/20" />
                       <span>View Flatmate Profile</span>
@@ -461,18 +428,40 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
               </div>
             )}
 
-            {/* Landlord Profile */}
+            {/* Lister / Contact Profile */}
             <div className="border-t pt-4 space-y-3">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Landlord Contact</span>
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {property.listerRelation === 'broker' ? 'Agent / Broker Contact' : property.listerRelation === 'flatmate' ? 'Flatmate Contact' : 'Owner Contact'}
+              </span>
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-full bg-slate-100 border flex items-center justify-center font-bold text-slate-700 text-sm">
                   {owner?.name?.[0] || "O"}
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800">{owner?.name || "Landlord Owner"}</h4>
-                  <span className="text-[10px] text-slate-400 capitalize">Role: {owner?.role || "Landlord"}</span>
+                  <h4 className="text-xs font-bold text-slate-800">{owner?.name || "Property Lister"}</h4>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Relation: <strong className="text-slate-800 capitalize">{property.listerRelation === 'broker' ? 'Broker / Agent' : property.listerRelation === 'flatmate' ? 'Flatmate' : 'Owner'}</strong>
+                  </span>
                 </div>
               </div>
+            </div>
+
+            {/* Report Listing Trigger Button */}
+            <div className="border-t pt-3">
+              <ReportPropertyModal
+                propertyId={property._id.toString()}
+                propertyTitle={`${property.bhkConfig ? property.bhkConfig + " in " : ""}${property.title}`}
+                isLoggedIn={Boolean(session?.user)}
+                currentUser={
+                  session?.user
+                    ? {
+                        name: session.user.name,
+                        phone: (session.user as any).phone,
+                        email: session.user.email,
+                      }
+                    : null
+                }
+              />
             </div>
 
           </div>

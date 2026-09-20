@@ -7,6 +7,7 @@ import Property from "@/models/Property";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CallButton from "./CallButton";
+import FlatmateBackButton from "./FlatmateBackButton";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import {
@@ -94,14 +95,17 @@ export default async function FlatmateDetailPage({ params }: { params: { id: str
   const smoking = getVibeVal("smoking");
   const sleep = getVibeVal("sleep");
 
+  const attachedPropertyId = listing?.propertyId
+    ? typeof listing.propertyId === 'object' && '_id' in listing.propertyId
+      ? (listing.propertyId as any)._id.toString()
+      : (listing.propertyId as any).toString()
+    : undefined;
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full flex-grow space-y-8">
-      {/* Back link */}
+      {/* Context-aware Back link */}
       <div>
-        <Link href="/search/flatmates" className="inline-flex items-center space-x-1.5 text-xs font-semibold text-brand-primary hover:underline">
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to roommate search</span>
-        </Link>
+        <FlatmateBackButton propertyId={attachedPropertyId} />
       </div>
 
       {/* Main Grid Layout */}
@@ -112,8 +116,16 @@ export default async function FlatmateDetailPage({ params }: { params: { id: str
 
           {/* Main User Card Details */}
           <div className="bg-white border rounded-2xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center">
-            <div className="h-20 w-20 rounded-full bg-brand-primary/10 border-2 border-brand-primary/20 flex items-center justify-center text-brand-primary font-extrabold text-3xl uppercase flex-shrink-0 shadow-inner">
-              {user.name ? user.name.charAt(0) : "S"}
+            <div className="h-20 w-20 rounded-full bg-brand-primary/10 border-2 border-brand-primary/20 flex items-center justify-center text-brand-primary font-extrabold text-3xl uppercase flex-shrink-0 shadow-inner overflow-hidden">
+              {user.profilePhoto ? (
+                <img
+                  src={user.profilePhoto}
+                  alt={user.name || "Seeker profile"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                user.name ? user.name.charAt(0) : "S"
+              )}
             </div>
 
             <div className="space-y-2 flex-grow">

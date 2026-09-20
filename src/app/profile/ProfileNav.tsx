@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Users, Home, LogOut } from "lucide-react";
+import { User, Users, Home, LogOut, Heart } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 export default function ProfileNav({ name }: { name: string }) {
@@ -10,6 +10,7 @@ export default function ProfileNav({ name }: { name: string }) {
 
   const items = [
     { name: "Personal Info", href: "/profile", icon: User },
+    { name: "Saved Wishlist", href: "/profile/wishlist", icon: Heart },
     { name: "Roommate Settings", href: "/profile/roommate", icon: Users },
     { name: "My Properties & Analytics", href: "/profile/properties", icon: Home },
   ];

@@ -4,6 +4,7 @@ export function getS3Config() {
   return {
     region: process.env.AWS_REGION || "ap-south-1",
     bucketName: process.env.AWS_S3_BUCKET_NAME,
+    profileBucketName: process.env.AWS_S3_PROFILE_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   };
@@ -117,5 +118,46 @@ export async function getObjectBuffer(key: string): Promise<Buffer> {
   };
 
   return streamToBuffer(response.Body);
+}
+
+export async function uploadProfilePhotoToS3(
+  key: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<string> {
+  const config = getS3Config();
+  const bucket = config.profileBucketName || config.bucketName;
+  if (!bucket) throw new Error("S3 Profile Bucket Name not configured");
+
+  const client = getS3Client();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
+  );
+
+  return `https://${bucket}.s3.${config.region}.amazonaws.com/${key}`;
+}
+
+export async function deleteProfilePhotoFromS3(key: string): Promise<void> {
+  if (!key) return;
+  const config = getS3Config();
+  const bucket = config.profileBucketName || config.bucketName;
+  if (!bucket) return;
+
+  try {
+    const client = getS3Client();
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      })
+    );
+  } catch (error) {
+    console.error(`Failed to delete S3 profile photo: ${key}`, error);
+  }
 }
 

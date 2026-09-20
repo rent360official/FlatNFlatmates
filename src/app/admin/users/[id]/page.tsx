@@ -53,6 +53,7 @@ export default async function AdminUserDetailPage({
     name: user.name,
     phone: user.phone,
     email: user.email,
+    profilePhoto: user.profilePhoto,
     role: user.role,
     verificationStatus: user.verificationStatus || 'pending',
     gender: user.gender,

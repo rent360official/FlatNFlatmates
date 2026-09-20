@@ -12,6 +12,7 @@ export interface UserDetailData {
   name?: string;
   phone: string;
   email?: string;
+  profilePhoto?: string;
   role: string;
   verificationStatus: string;
   rejectionReason?: string;
@@ -91,10 +92,21 @@ export default function UserDetailsForm({
           {/* Main Form Fields */}
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-5">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center">
-                <User className="h-4 w-4 mr-2 text-brand-primary" />
-                Account Credentials & Identity
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center">
+                  <User className="h-4 w-4 mr-2 text-brand-primary" />
+                  Account Credentials & Identity
+                </h3>
+                {user.profilePhoto && (
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-brand-primary/20 shrink-0">
+                    <img
+                      src={user.profilePhoto}
+                      alt={user.name || "User Avatar"}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Full Name */}

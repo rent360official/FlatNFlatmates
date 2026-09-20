@@ -400,7 +400,7 @@ export default function DemandAnalyticsClient({ initialData, availableLocalities
             <p className="text-xs text-slate-500">Percentage of prospective tenants filtering explicitly for these property features:</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-2">
               {[
-                { label: 'Zero Brokerage', pct: data.filterDemand.zeroBrokerage, color: 'emerald' },
+                { label: 'No Brokerage', pct: data.filterDemand.zeroBrokerage, color: 'emerald' },
                 { label: 'Pets Allowed', pct: data.filterDemand.petAllowed, color: 'blue' },
                 { label: 'Parking Attached', pct: data.filterDemand.parking, color: 'indigo' },
                 { label: 'Power Backup', pct: data.filterDemand.powerBackup, color: 'amber' },
@@ -553,7 +553,7 @@ export default function DemandAnalyticsClient({ initialData, availableLocalities
                         {log.searchParams?.flatmatePreferences ? (
                           <span>{log.searchParams.flatmatePreferences.userType || 'Any'} • {log.searchParams.flatmatePreferences.shift || 'Any Shift'}</span>
                         ) : log.searchParams?.zeroBrokerage ? (
-                          <span className="text-emerald-700 font-semibold">Zero Brokerage</span>
+                          <span className="text-emerald-700 font-semibold">No Brokerage</span>
                         ) : (
                           <span>Standard search</span>
                         )}

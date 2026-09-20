@@ -95,6 +95,7 @@ export const authOptions: NextAuthOptions = {
             email: user.email || "",
             phone: user.phone,
             role: user.role,
+            image: user.profilePhoto || undefined,
           };
         }
 
@@ -120,14 +121,39 @@ export const authOptions: NextAuthOptions = {
         user.id = dbUser._id.toString();
         (user as any).role = dbUser.role;
         (user as any).phone = dbUser.phone;
+        (user as any).profilePhoto = dbUser.profilePhoto;
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.phone = (user as any).phone;
+        token.image = (user as any).profilePhoto || user.image;
+      }
+      if (trigger === "update") {
+        if (session?.image !== undefined) {
+          token.image = session.image;
+        }
+        if (session?.name !== undefined) {
+          token.name = session.name;
+        }
+      }
+      // If token does not have an image yet, load it from database
+      if (token.id && !token.image) {
+        try {
+          await dbConnect();
+          const dbUser = await User.findById(token.id).select("profilePhoto name role phone").lean();
+          if (dbUser?.profilePhoto) {
+            token.image = dbUser.profilePhoto;
+          }
+          if (dbUser?.name && !token.name) {
+            token.name = dbUser.name;
+          }
+        } catch (e) {
+          // silently catch
+        }
       }
       return token;
     },
@@ -136,6 +162,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).phone = token.phone;
+        (session.user as any).profilePhoto = (token.image as string) || undefined;
+        session.user.image = (token.image as string) || session.user.image;
       }
       return session;
     },

@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import {
   LayoutDashboard, MapPin, Users,
   Sparkles, PhoneCall, ListCollapse, Settings, ArrowLeft, Layers, Share2, TrendingUp,
-  Database, ExternalLink, Clock
+  Database, ExternalLink, Clock, Mail
 } from "lucide-react";
 
 interface NavItem {
@@ -36,6 +36,7 @@ export default function AdminLayout({
 
   const navItems: NavItem[] = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Inquiries", href: "/admin/inquiries", icon: Mail },
     { name: "Pending Approvals", href: "/admin/pending-approvals", icon: Clock },
     { name: "Demand Analytics", href: "/admin/demand-analytics", icon: TrendingUp, roles: ['super_admin', 'ops_admin'] },
     ...(resolvedCollectorUrl

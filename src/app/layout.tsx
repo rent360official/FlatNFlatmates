@@ -5,6 +5,8 @@ import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 import AuthProvider from "@/components/AuthProvider";
 import PhoneVerificationGuard from "@/components/PhoneVerificationGuard";
+import MicrosoftClarity from "@/components/MicrosoftClarity";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Script from "next/script";
@@ -30,7 +32,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "FlatNFlatmates.in | Find Flats & Flatmates in Pune",
-  description: "Easiest, quickest, and most precise flat and flatmate search platform in Pune with premium Vibe upgrade services.",
+  description: "Easiest, quickest, and most precise flat and flatmate search platform in Pune.",
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -55,6 +57,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-50/50`}
       >
         <AuthProvider>
+          <MicrosoftClarity />
+          <GoogleAnalytics />
           <PhoneVerificationGuard>
             <Header />
             <main className="flex-grow flex flex-col w-full">

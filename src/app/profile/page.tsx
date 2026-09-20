@@ -22,6 +22,7 @@ export default async function ProfilePage() {
     name: user.name,
     phone: user.phone,
     email: user.email,
+    profilePhoto: user.profilePhoto,
     age: user.age,
     gender: user.gender,
     profession: user.profession,
