@@ -365,7 +365,6 @@ export default function FlatmateSearchWizard({
 
     try {
       const savedRaw = sessionStorage.getItem("flatmate_search_wizard_state_v2");
-      let restoredStep: number | null = null;
 
       if (savedRaw) {
         const saved = JSON.parse(savedRaw);

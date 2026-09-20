@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const cityName = searchParams.get('city') || 'Pune';
 
-    let filter: any = { isActive: true };
+    const filter: any = { isActive: true };
 
     if (cityName) {
       const city = await City.findOne({ name: new RegExp(`^${cityName}$`, 'i'), isActive: true }).lean();
