@@ -344,7 +344,12 @@ export async function GET(req: NextRequest) {
     // Apply existing filters
     if (bhkConfig && bhkConfig !== "any") query.bhkConfig = bhkConfig;
     if (furnishingStatus && furnishingStatus !== "any") query.furnishingStatus = furnishingStatus;
-    if (tenantPreference && tenantPreference !== "any") query.tenantPreference = tenantPreference;
+    if (tenantPreference && tenantPreference !== "any") {
+      const prefs = tenantPreference.split(',').map((s: string) => s.trim()).filter(Boolean);
+      if (prefs.length > 0) {
+        query.tenantPreference = { $in: [...prefs, "any"] };
+      }
+    }
     if (zeroBrokerage) query.brokerageFlag = false;
 
     // Rent range query

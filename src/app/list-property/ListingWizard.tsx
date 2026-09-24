@@ -9,8 +9,9 @@ import {
   UploadCloud, X, Film, Star, Loader2, Trash2, AlertCircle, AlertTriangle
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import type { MediaUploadConfig } from "@/lib/mediaConfig";
+import { TENANT_PREFERENCE_OPTIONS } from "@/lib/utils";
 
 interface Locality {
   _id: string;
@@ -129,7 +130,7 @@ export default function ListingWizard({
     depositAmount: number | string;
     maintenanceAmount: number | string;
     furnishingStatus: string;
-    tenantPreference: string;
+    tenantPreference: string[];
     brokerageFlag: boolean;
     brokerageAmount: number | string;
     listerRelation: 'owner' | 'broker' | 'flatmate';
@@ -138,11 +139,33 @@ export default function ListingWizard({
     depositAmount: initialProperty?.depositAmount !== undefined ? initialProperty.depositAmount : "",
     maintenanceAmount: initialProperty?.maintenanceAmount !== undefined ? initialProperty.maintenanceAmount : "",
     furnishingStatus: initialProperty?.furnishingStatus || "semi_furnished",
-    tenantPreference: initialProperty?.tenantPreference || "any",
+    tenantPreference: Array.isArray(initialProperty?.tenantPreference)
+      ? (initialProperty.tenantPreference.length > 0 ? initialProperty.tenantPreference : ["any"])
+      : (initialProperty?.tenantPreference ? [initialProperty.tenantPreference] : ["any"]),
     brokerageFlag: !!initialProperty?.brokerageFlag,
     brokerageAmount: initialProperty?.brokerageAmount !== undefined ? initialProperty.brokerageAmount : "",
     listerRelation: initialProperty?.listerRelation || "owner",
   });
+
+  const toggleTenantPreference = (optionId: string) => {
+    setPricing((prev) => {
+      const current = prev.tenantPreference || [];
+      if (optionId === 'any') {
+        return { ...prev, tenantPreference: ['any'] };
+      }
+      const filtered = current.filter((item) => item !== 'any');
+      let updated: string[];
+      if (filtered.includes(optionId)) {
+        updated = filtered.filter((item) => item !== optionId);
+        if (updated.length === 0) {
+          updated = ['any'];
+        }
+      } else {
+        updated = [...filtered, optionId];
+      }
+      return { ...prev, tenantPreference: updated };
+    });
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
@@ -197,9 +220,17 @@ export default function ListingWizard({
       disableDefaultUI: true,
       zoomControl: true,
       gestureHandling: 'greedy',
-      styles: mapStyles,
+      styles: getResponsiveMapStyles(),
     });
     mapInstanceRef.current = map;
+
+    // Keep map style responsive on window resize / orientation change (dark on phone view)
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
 
     const marker = new (window as any).google.maps.Marker({
       position: initialPos,
@@ -281,6 +312,10 @@ export default function ListingWizard({
         }
       });
     }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, [isMapsLoaded, step]);
 
   const formatFileSize = (bytes?: number) => {
@@ -1615,7 +1650,7 @@ export default function ListingWizard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Furnishing Status</label>
                 <select
@@ -1628,19 +1663,31 @@ export default function ListingWizard({
                   <option value="unfurnished">Unfurnished / Bare Shell</option>
                 </select>
               </div>
+
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Preferred Tenant Type</label>
-                <select
-                  value={pricing.tenantPreference}
-                  onChange={e => setPricing({ ...pricing, tenantPreference: e.target.value })}
-                  className="w-full text-xs border rounded-lg px-3 py-2 bg-slate-50 outline-brand-primary"
-                >
-                  <option value="any">No Preference (Any)</option>
-                  <option value="bachelors">Bachelors (Students / IT)</option>
-                  <option value="family">Families</option>
-                  <option value="girls">Girls Only</option>
-                  <option value="boys">Boys Only</option>
-                </select>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1.5">
+                  Preferred Tenant Type <span className="text-slate-400 font-normal lowercase">(multi-select)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TENANT_PREFERENCE_OPTIONS.map((opt) => {
+                    const isSelected = pricing.tenantPreference?.includes(opt.id);
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => toggleTenantPreference(opt.id)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? "bg-brand-primary text-white border-brand-primary shadow-xs font-semibold"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

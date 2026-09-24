@@ -145,15 +145,15 @@ function LoginForm() {
   };
 
   // Determine Title based on current state
-  const titleText = !showOtpField 
-    ? "Sign In / Sign Up" 
+  const titleText = !showOtpField
+    ? "Sign In / Sign Up"
     : (userExists ? "Sign In to Your Account" : "Create Your Account");
 
   const subtitleText = !showOtpField
     ? "Access flats search, matching profiles & secure calling in Pune."
-    : (userExists 
-        ? `Welcome back! Please enter the OTP sent to ${phone}.` 
-        : `New number detected! Please fill details below to register.`);
+    : (userExists
+      ? `Welcome back! Please enter the OTP sent to ${phone}.`
+      : `New number detected! Please fill details below to register.`);
 
   return (
     <div className="flex min-h-[75vh] items-center justify-center p-4 bg-gray-50/50 flex-grow w-full">
@@ -234,7 +234,7 @@ function LoginForm() {
                   type="text"
                   value={otp}
                   onChange={e => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit OTP code"
+                  placeholder="Enter OTP code"
                   required
                   maxLength={6}
                   className="w-full text-xs border rounded-lg pl-9 pr-3 py-2.5 bg-slate-50 outline-brand-primary font-sans tracking-widest text-center font-bold"

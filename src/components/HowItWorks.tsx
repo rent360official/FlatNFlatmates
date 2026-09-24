@@ -234,7 +234,7 @@ export default function HowItWorks() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                     <img
-                      src="/images/landing/filter.png"
+                      src="/images/landing/filter.webp"
                       alt="Select Commute & Specs illustration"
                       className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-103"
                     />
@@ -312,7 +312,7 @@ export default function HowItWorks() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-tl from-brand-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                     <img
-                      src="/images/landing/interactive_map_match_cards_view2.png"
+                      src="/images/landing/interactive_map_match_cards_view2.webp"
                       alt="Browse Match Cards illustration"
                       className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-103"
                     />

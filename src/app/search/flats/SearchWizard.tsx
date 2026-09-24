@@ -8,7 +8,7 @@ import {
   Heart, Phone, Mail, CheckCircle2, Loader2, UserCheck, Edit3
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import { colors } from "@/theme/colors";
 import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
 import { recordPropertyCallAction, recordPropertyWhatsappAction } from "@/app/flat/[id]/actions";
@@ -855,7 +855,7 @@ export default function SearchWizard({
         zoom: searchArea || poisList.length > 0 ? 13 : 12,
         gestureHandling: "greedy",
         scrollwheel: true,
-        styles: mapStyles,
+        styles: getResponsiveMapStyles(),
         restriction: {
           latLngBounds: puneBounds,
           strictBounds: false,
@@ -868,6 +868,17 @@ export default function SearchWizard({
       mapInstanceRef.current = map;
     }
   }, [isMapsLoaded, step, searchArea, poisList]);
+
+  // Keep map style responsive on window resize / orientation change (dark on phone view)
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Manage property markers reactively
   useEffect(() => {

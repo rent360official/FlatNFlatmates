@@ -7,6 +7,7 @@ import PropertyInquiry from "@/models/PropertyInquiry";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { notFound, redirect } from "next/navigation";
+import { formatTenantPreference } from "@/lib/utils";
 import AdminPropertyCardActions from "./AdminPropertyCardActions";
 import Link from "next/link";
 import {
@@ -323,7 +324,7 @@ export default async function AdminUserPropertiesPage({
                         {property.furnishingStatus?.replace('_', ' ')}
                       </span>
                       <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium capitalize">
-                        Prefers: {property.tenantPreference}
+                        Prefers: {formatTenantPreference(property.tenantPreference)}
                       </span>
                     </div>
 

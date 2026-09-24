@@ -35,7 +35,7 @@ export async function publishProperty(data: {
   lat: number;
   lng: number;
   furnishingStatus: string;
-  tenantPreference: string;
+  tenantPreference: string[] | string;
   brokerageFlag: boolean;
   brokerageAmount: number;
   amenities: string[];
@@ -115,7 +115,9 @@ export async function publishProperty(data: {
         coordinates: [data.lng, data.lat], // [lng, lat]
       },
       furnishingStatus: data.furnishingStatus as any,
-      tenantPreference: data.tenantPreference as any,
+      tenantPreference: (Array.isArray(data.tenantPreference)
+        ? (data.tenantPreference.length > 0 ? data.tenantPreference : ['any'])
+        : (data.tenantPreference ? [data.tenantPreference] : ['any'])) as any,
       brokerageFlag: data.brokerageFlag,
       brokerageAmount: data.brokerageAmount,
       amenities: data.amenities,
@@ -175,7 +177,7 @@ export async function updateProperty(propertyId: string, data: {
   lat: number;
   lng: number;
   furnishingStatus: string;
-  tenantPreference: string;
+  tenantPreference: string[] | string;
   brokerageFlag: boolean;
   brokerageAmount: number;
   amenities: string[];
@@ -253,7 +255,9 @@ export async function updateProperty(propertyId: string, data: {
       coordinates: [data.lng, data.lat],
     };
     property.furnishingStatus = data.furnishingStatus as any;
-    property.tenantPreference = data.tenantPreference as any;
+    property.tenantPreference = (Array.isArray(data.tenantPreference)
+      ? (data.tenantPreference.length > 0 ? data.tenantPreference : ['any'])
+      : (data.tenantPreference ? [data.tenantPreference] : ['any'])) as any;
     property.brokerageFlag = data.brokerageFlag;
     property.brokerageAmount = data.brokerageAmount;
     if (data.listerRelation) {

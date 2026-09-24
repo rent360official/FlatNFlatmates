@@ -9,7 +9,7 @@ export default function MapBackground({ isMiniMap = false }: MapBackgroundProps)
     <div className="absolute inset-0 w-full h-full select-none overflow-hidden bg-customBg-base">
       {/* Map View Image */}
       <img
-        src="/images/landing/map_view.png"
+        src="/images/landing/map_view.webp"
         className={`w-full h-full object-cover ${
           isMiniMap ? 'opacity-90 mix-blend-normal' : 'opacity-50 mix-blend-normal'
         }`}

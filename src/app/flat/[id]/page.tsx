@@ -23,6 +23,7 @@ import { recordPropertyViewDemand } from "@/lib/demandTelemetry";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { isFeatureActive } from "@/lib/featureAccess";
+import { formatTenantPreference } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
       bhkConfig: property.bhkConfig,
       rentAmount: property.rentAmount,
       furnishingStatus: property.furnishingStatus,
-      tenantType: property.tenantPreference,
+      tenantType: formatTenantPreference(property.tenantPreference),
     },
     session?.user ? { id: (session.user as any).id, role: (session.user as any).role } : null
   ).catch(() => {});
@@ -146,6 +147,17 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
 
   const isInterestSmsEnabled = await isFeatureActive('property_interest_sms', (session?.user as any)?.role);
 
+  const isNA = (fieldKey: string) => {
+    return Array.isArray(property.notAvailableFields) && property.notAvailableFields.includes(fieldKey);
+  };
+
+  const renderValOrNA = (fieldKey: string, value: React.ReactNode) => {
+    if (isNA(fieldKey)) {
+      return <span className="text-amber-600 font-medium italic">Information not available</span>;
+    }
+    return value;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Top Back Navigation */}
@@ -172,11 +184,15 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
               {property.title}
             </h1>
             <div className="flex items-center space-x-2 text-xs text-slate-500 flex-wrap gap-y-2">
-              <span className="font-semibold text-slate-700">{property.bhkConfig}</span>
+              <span className="font-semibold text-slate-700">
+                {renderValOrNA('bhkConfig', property.bhkConfig)}
+              </span>
               <span>•</span>
               <span>Locality: {(property.localityId as any)?.name || "N/A"}, Pune</span>
               <span>•</span>
-              <span>Furnishing: {property.furnishingStatus.replace('_', ' ')}</span>
+              <span>
+                Furnishing: {renderValOrNA('furnishingStatus', property.furnishingStatus.replace('_', ' '))}
+              </span>
               <span>•</span>
               <span className="inline-flex items-center bg-slate-900 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-xs uppercase tracking-wide">
                 Listed by {property.listerRelation === 'broker' ? 'Broker' : property.listerRelation === 'flatmate' ? 'Flatmate' : 'Owner'}
@@ -187,25 +203,45 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
           {/* Description */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Property Description</h3>
-            <p className="text-xs text-slate-600 leading-relaxed font-sans">{property.description}</p>
+            <p className="text-xs text-slate-600 leading-relaxed font-sans">
+              {renderValOrNA('description', property.description)}
+            </p>
           </div>
 
           {/* Pricing Parameters */}
           <div className="grid grid-cols-3 gap-4 border-t border-b py-6 my-2">
             <div>
               <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Rent</span>
-              <span className="text-lg font-extrabold text-slate-900">₹{property.rentAmount.toLocaleString()}</span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">/ month</span>
+              {isNA('rentAmount') ? (
+                <span className="text-xs font-semibold text-amber-600 italic block mt-1">Information not available</span>
+              ) : (
+                <>
+                  <span className="text-lg font-extrabold text-slate-900">₹{property.rentAmount.toLocaleString()}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">/ month</span>
+                </>
+              )}
             </div>
             <div>
               <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Security Deposit</span>
-              <span className="text-lg font-extrabold text-slate-900">₹{property.depositAmount.toLocaleString()}</span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Refundable</span>
+              {isNA('depositAmount') ? (
+                <span className="text-xs font-semibold text-amber-600 italic block mt-1">Information not available</span>
+              ) : (
+                <>
+                  <span className="text-lg font-extrabold text-slate-900">₹{property.depositAmount.toLocaleString()}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">Refundable</span>
+                </>
+              )}
             </div>
             <div>
               <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Maintenance</span>
-              <span className="text-lg font-extrabold text-slate-900">₹{property.maintenanceAmount.toLocaleString()}</span>
-              <span className="text-[9px] text-slate-400 block mt-0.5">/ month</span>
+              {isNA('maintenanceAmount') ? (
+                <span className="text-xs font-semibold text-amber-600 italic block mt-1">Information not available</span>
+              ) : (
+                <>
+                  <span className="text-lg font-extrabold text-slate-900">₹{property.maintenanceAmount.toLocaleString()}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">/ month</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -267,15 +303,28 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                 <div className="space-y-1 text-xs text-slate-700">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Available From</span>
-                    <span className="font-semibold">{new Date(property.availableFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span className="font-semibold">
+                      {renderValOrNA(
+                        'availableFrom',
+                        new Date(property.availableFrom).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Min Lease</span>
-                    <span className="font-semibold">{property.minLeaseMonths} months</span>
+                    <span className="font-semibold">
+                      {renderValOrNA('minLeaseMonths', `${property.minLeaseMonths} months`)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Lock-in Period</span>
-                    <span className="font-semibold">{property.lockInMonths === 0 ? 'No lock-in' : `${property.lockInMonths} months`}</span>
+                    <span className="font-semibold">
+                      {property.lockInMonths === 0 ? 'No lock-in' : `${property.lockInMonths} months`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -285,14 +334,27 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tenant Policies</p>
                 <div className="space-y-1 text-xs text-slate-700">
                   <div className="flex justify-between">
+                    <span className="text-slate-500">Preferred Tenants</span>
+                    <span className="font-semibold">
+                      {renderValOrNA('tenantPreference', formatTenantPreference(property.tenantPreference))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-slate-500">Pet Policy</span>
-                    <span className={`font-semibold capitalize ${property.petPolicy === 'allowed' ? 'text-green-700' : property.petPolicy === 'not_allowed' ? 'text-red-600' : 'text-amber-700'}`}>
-                      {property.petPolicy === 'allowed' ? '🐾 Allowed' : property.petPolicy === 'not_allowed' ? '✗ No Pets' : '⚠ Case by Case'}
+                    <span className="font-semibold capitalize">
+                      {renderValOrNA(
+                        'petPolicy',
+                        <span className={property.petPolicy === 'allowed' ? 'text-green-700' : property.petPolicy === 'not_allowed' ? 'text-red-600' : 'text-amber-700'}>
+                          {property.petPolicy === 'allowed' ? '🐾 Allowed' : property.petPolicy === 'not_allowed' ? '✗ No Pets' : '⚠ Case by Case'}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Max Occupants</span>
-                    <span className="font-semibold">{property.maxOccupants} person{property.maxOccupants !== 1 ? 's' : ''}</span>
+                    <span className="font-semibold">
+                      {renderValOrNA('maxOccupants', `${property.maxOccupants} person${property.maxOccupants !== 1 ? 's' : ''}`)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -303,12 +365,23 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                 <div className="space-y-1 text-xs text-slate-700">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Parking</span>
-                    <span className="font-semibold capitalize">{property.parkingType === 'none' ? 'No Parking' : property.parkingType === 'two_wheeler' ? 'Two-Wheeler' : property.parkingType === 'four_wheeler' ? 'Four-Wheeler' : 'Both (2W + 4W)'}</span>
+                    <span className="font-semibold capitalize">
+                      {renderValOrNA(
+                        'parkingType',
+                        property.parkingType === 'none'
+                          ? 'No Parking'
+                          : property.parkingType === 'two_wheeler'
+                          ? 'Two-Wheeler'
+                          : property.parkingType === 'four_wheeler'
+                          ? 'Four-Wheeler'
+                          : 'Both (2W + 4W)'
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">EV Charging</span>
                     <span className={`font-semibold ${property.evChargingAvailable ? 'text-brand-primaryHover' : 'text-slate-500'}`}>
-                      {property.evChargingAvailable ? '⚡ Available' : 'Not Available'}
+                      {renderValOrNA('evChargingAvailable', property.evChargingAvailable ? '⚡ Available' : 'Not Available')}
                     </span>
                   </div>
                 </div>
@@ -320,11 +393,25 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                 <div className="space-y-1 text-xs text-slate-700">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Power Backup</span>
-                    <span className="font-semibold capitalize">{property.powerBackup === 'none' ? 'None' : property.powerBackup === 'partial' ? 'Partial' : 'Full Backup'}</span>
+                    <span className="font-semibold capitalize">
+                      {renderValOrNA(
+                        'powerBackup',
+                        property.powerBackup === 'none'
+                          ? 'None'
+                          : property.powerBackup === 'partial'
+                          ? 'Partial'
+                          : 'Full Backup'
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Water Supply</span>
-                    <span className="font-semibold capitalize">{property.waterSupplyType === 'municipal' ? 'Municipal (PMC/PMRDA)' : property.waterSupplyType}</span>
+                    <span className="font-semibold capitalize">
+                      {renderValOrNA(
+                        'waterSupplyType',
+                        property.waterSupplyType === 'municipal' ? 'Municipal (PMC/PMRDA)' : property.waterSupplyType
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -336,7 +423,10 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
                   <div className="flex justify-between">
                     <span className="text-slate-500">Fiber Internet</span>
                     <span className={`font-semibold ${property.internetReadiness?.fiberAvailable ? 'text-brand-primaryHover' : 'text-slate-500'}`}>
-                      {property.internetReadiness?.fiberAvailable ? '✓ Available' : 'Not confirmed'}
+                      {renderValOrNA(
+                        'internetReadiness',
+                        property.internetReadiness?.fiberAvailable ? '✓ Available' : 'Not confirmed'
+                      )}
                     </span>
                   </div>
                   {property.internetReadiness?.avgSpeedMbps && (
@@ -383,11 +473,21 @@ export default async function FlatDetailPage({ params }: { params: { id: string 
             {/* Price Box */}
             <div className="space-y-1">
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Total Monthly Cost</span>
-              <div className="flex items-baseline space-x-1.5">
-                <span className="text-2xl font-extrabold text-slate-900">₹{(property.rentAmount + property.maintenanceAmount).toLocaleString()}</span>
-                <span className="text-xs text-slate-500">/mo</span>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-normal">Inclusive of maintenance charges.</p>
+              {isNA('rentAmount') ? (
+                <div className="text-base font-bold text-amber-600 italic py-1">
+                  Information not available
+                </div>
+              ) : (
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900">
+                    ₹{(property.rentAmount + (isNA('maintenanceAmount') ? 0 : property.maintenanceAmount)).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-slate-500">/mo</span>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-400 leading-normal">
+                {isNA('maintenanceAmount') ? 'Maintenance details not available.' : 'Inclusive of maintenance charges.'}
+              </p>
             </div>
 
             {/* Calling & Contact Actions (Call, WhatsApp, Interested via MSG91) */}

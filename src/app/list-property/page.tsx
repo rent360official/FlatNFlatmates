@@ -84,7 +84,11 @@ export default async function ListPropertyPage({
           depositAmount: propDoc.depositAmount !== undefined ? propDoc.depositAmount : "",
           maintenanceAmount: propDoc.maintenanceAmount !== undefined ? propDoc.maintenanceAmount : "",
           furnishingStatus: propDoc.furnishingStatus || "semi_furnished",
-          tenantPreference: propDoc.tenantPreference || "any",
+          tenantPreference: Array.isArray(propDoc.tenantPreference)
+            ? propDoc.tenantPreference
+            : propDoc.tenantPreference
+            ? [propDoc.tenantPreference]
+            : ["any"],
           brokerageFlag: !!propDoc.brokerageFlag,
           brokerageAmount: propDoc.brokerageAmount || "",
           listerRelation: propDoc.listerRelation || "owner",

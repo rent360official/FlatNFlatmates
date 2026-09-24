@@ -8,7 +8,7 @@ import {
   Heart, Phone, Mail, CheckCircle2, Loader2, UserCheck
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import { createPoiMapMarkerIcon, getPoiVisualConfig } from "@/lib/poiIcons";
 import { POPULAR_LOCALITIES_DATA, formatIntMetric, ALL_CATEGORIES, getTop4Categories } from "../flats/SearchWizard";
 import { recordPropertyCallAction, recordPropertyWhatsappAction } from "@/app/flat/[id]/actions";
@@ -683,7 +683,7 @@ export default function FlatmateSearchWizard({
       disableDefaultUI: true,
       zoomControl: true,
       gestureHandling: 'greedy',
-      styles: mapStyles,
+      styles: getResponsiveMapStyles(),
     });
     mapInstanceRef.current = map;
 
@@ -691,6 +691,17 @@ export default function FlatmateSearchWizard({
       mapInstanceRef.current = null;
     };
   }, [isMapsLoaded, step, searchIntent]);
+
+  // Keep map style responsive on window resize / orientation change (dark on phone view)
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
 
   // Effect to manage commute POI markers with custom themed circle icons in Flatmates
