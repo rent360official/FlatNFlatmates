@@ -146,7 +146,7 @@ export default function VerifyPhonePage() {
   return (
     <div className="flex min-h-[75vh] items-center justify-center p-4 bg-gray-50/50 flex-grow w-full">
       <div className="w-full max-w-md bg-white border rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
-        
+
         {/* Header */}
         <div className="text-center space-y-1.5">
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary mb-2">
@@ -203,7 +203,7 @@ export default function VerifyPhonePage() {
                   type="text"
                   value={otp}
                   onChange={e => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit OTP code"
+                  placeholder="Enter OTP code"
                   required
                   maxLength={6}
                   className="w-full text-xs border rounded-lg pl-9 pr-3 py-2.5 bg-slate-50 outline-brand-primary font-sans tracking-widest text-center font-bold"

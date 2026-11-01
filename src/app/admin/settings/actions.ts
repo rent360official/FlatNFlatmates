@@ -184,3 +184,107 @@ export async function updateMediaLimitsConfig(formData: FormData) {
   }
 }
 
+/**
+ * Updates the configurable WhatsApp / SMS magic link message template for property owners.
+ */
+export async function updatePropertyApprovalMessageTemplateAction(template: string) {
+  try {
+    const actor = await getAdminActor();
+    await dbConnect();
+
+    if (!template || !template.trim()) {
+      throw new Error("Message template cannot be empty");
+    }
+
+    const { PROPERTY_APPROVAL_MESSAGE_FLAG_KEY } = await import("@/lib/propertyApprovalConfig");
+
+    const existing = await FeatureFlag.findOne({ key: PROPERTY_APPROVAL_MESSAGE_FLAG_KEY });
+    const beforeState = existing ? existing.toObject() : null;
+
+    const updated = await FeatureFlag.findOneAndUpdate(
+      { key: PROPERTY_APPROVAL_MESSAGE_FLAG_KEY },
+      {
+        $set: {
+          label: "Property Approval Magic Link Message Template",
+          value: template.trim(),
+          status: "enabled",
+          category: "system_config",
+          description: "Configurable WhatsApp/SMS template with placeholders sent to property owners for reviewing and making listings live.",
+          isActive: true,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    await logAdminAction({
+      actorId: actor.id,
+      action: "update_approval_message_template",
+      entityType: "FeatureFlag",
+      entityId: updated._id,
+      beforeState,
+      afterState: updated.toObject(),
+    });
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/pending-approvals");
+    revalidatePath("/admin/users");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || "Failed to save message template" };
+  }
+}
+
+/**
+ * Updates the configurable bulk WhatsApp / SMS magic link message template for owners with multiple properties.
+ */
+export async function updateBulkPropertyApprovalMessageTemplateAction(template: string) {
+  try {
+    const actor = await getAdminActor();
+    await dbConnect();
+
+    if (!template || !template.trim()) {
+      throw new Error("Bulk message template cannot be empty");
+    }
+
+    const { BULK_PROPERTY_APPROVAL_MESSAGE_FLAG_KEY } = await import("@/lib/propertyApprovalConfig");
+
+    const existing = await FeatureFlag.findOne({ key: BULK_PROPERTY_APPROVAL_MESSAGE_FLAG_KEY });
+    const beforeState = existing ? existing.toObject() : null;
+
+    const updated = await FeatureFlag.findOneAndUpdate(
+      { key: BULK_PROPERTY_APPROVAL_MESSAGE_FLAG_KEY },
+      {
+        $set: {
+          label: "Bulk Property Approval Magic Link Message Template",
+          value: template.trim(),
+          status: "enabled",
+          category: "system_config",
+          description: "Configurable WhatsApp/SMS template sent to owners with multiple drafted properties to approve all in 1 click.",
+          isActive: true,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    await logAdminAction({
+      actorId: actor.id,
+      action: "update_bulk_approval_message_template",
+      entityType: "FeatureFlag",
+      entityId: updated._id,
+      beforeState,
+      afterState: updated.toObject(),
+    });
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/pending-approvals");
+    revalidatePath("/admin/users");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || "Failed to save bulk message template" };
+  }
+}
+
+
+

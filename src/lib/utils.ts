@@ -25,3 +25,31 @@ export function getFriendlyErrorMessage(error: any, fallback: string = "An unexp
   
   return fallback;
 }
+
+export const TENANT_PREFERENCE_OPTIONS = [
+  { id: 'family', label: 'Families' },
+  { id: 'bachelors', label: 'Bachelors' },
+  { id: 'girls', label: 'Girls Only' },
+  { id: 'boys', label: 'Boys Only' },
+  { id: 'any', label: 'Any / No Preference' },
+] as const;
+
+export function formatTenantPreference(pref: string[] | string | undefined | null): string {
+  if (!pref) return 'Any';
+  const list = Array.isArray(pref) ? pref : [pref];
+  if (list.length === 0) return 'Any';
+  if (list.includes('any') && list.length === 1) return 'Any';
+
+  const labelMap: Record<string, string> = {
+    any: 'Any',
+    family: 'Family',
+    bachelors: 'Bachelors',
+    girls: 'Girls Only',
+    boys: 'Boys Only',
+  };
+
+  return list
+    .map((p) => labelMap[p] || (typeof p === 'string' ? p.charAt(0).toUpperCase() + p.slice(1) : String(p)))
+    .join(', ');
+}
+

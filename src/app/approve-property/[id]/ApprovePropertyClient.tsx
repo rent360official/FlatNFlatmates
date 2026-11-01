@@ -25,8 +25,10 @@ import {
   ArrowRight,
   ExternalLink,
   Info,
+  AlertTriangle,
 } from 'lucide-react';
 import { ownerMakePropertyLive, ownerRejectProperty } from './actions';
+import { formatTenantPreference } from '@/lib/utils';
 
 interface PropertyData {
   _id: string;
@@ -45,7 +47,7 @@ interface PropertyData {
   cityName: string;
   coordinates?: [number, number];
   furnishingStatus: string;
-  tenantPreference: string;
+  tenantPreference: string[] | string;
   brokerageFlag: boolean;
   brokerageAmount: number;
   amenities: string[];
@@ -64,7 +66,9 @@ interface PropertyData {
   waterSupplyType?: string;
   internetReadiness?: { fiberAvailable: boolean; avgSpeedMbps?: number };
   allowWhatsappContact?: boolean;
+  notAvailableFields?: string[];
   status: string;
+  imageUpdateRequired?: boolean;
   createdAt: string;
   owner: {
     _id: string;
@@ -91,6 +95,17 @@ export default function ApprovePropertyClient({
   const [actionType, setActionType] = useState<'live' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSuccessLive, setIsSuccessLive] = useState(false);
+
+  const isNA = (fieldKey: string) => {
+    return Array.isArray(property.notAvailableFields) && property.notAvailableFields.includes(fieldKey);
+  };
+
+  const renderValOrNA = (fieldKey: string, value: React.ReactNode) => {
+    if (isNA(fieldKey)) {
+      return <span className="text-amber-600 italic font-medium">Information not available</span>;
+    }
+    return value;
+  };
 
   const handleMakeLive = () => {
     setError(null);
@@ -219,16 +234,49 @@ export default function ApprovePropertyClient({
           </div>
         )}
 
+        {/* Image Update Required Banner (Requirement 2) */}
+        {property.imageUpdateRequired && isPendingApproval && (
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-5 sm:p-6 text-amber-950 shadow-md space-y-3 animate-in fade-in slide-in-from-top-3">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 border border-amber-300">
+                    Action Required
+                  </span>
+                  <h2 className="text-base sm:text-lg font-black text-amber-950">
+                    Image update is required to make it live!
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+                  Our quality check team requires updated photos of the property before this listing can be activated and shown to prospective tenants. Please click <strong>Update Details First</strong> below to upload new photos, or contact support once ready.
+                </p>
+              </div>
+            </div>
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              <Link
+                href={`/list-property?edit=${property._id}&approveOnSave=true`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-700 transition shadow-sm"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                <span>Upload Images / Edit Property</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Main Hero Card: Title, Rent, and Photos */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-5 sm:p-7 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-brand-primary/10 text-brand-primary border border-brand-primary/20 uppercase tracking-wider">
-                  {property.bhkConfig} · {property.propertyType}
+                  {renderValOrNA('bhkConfig', property.bhkConfig)} · {renderValOrNA('propertyType', property.propertyType)}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wider">
-                  {property.furnishingStatus.replace('_', ' ')}
+                  {renderValOrNA('furnishingStatus', property.furnishingStatus.replace('_', ' '))}
                 </span>
               </div>
               <h1 className="mt-2 text-2xl sm:text-3xl font-black text-slate-900">
@@ -237,20 +285,28 @@ export default function ApprovePropertyClient({
               <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
                 <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
                 <span>
-                  {property.addressLine}, {property.localityName}, {property.cityName}
+                  {renderValOrNA('addressLine', property.addressLine)}, {property.localityName}, {property.cityName}
                 </span>
               </div>
             </div>
 
             {/* Price Box */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-right sm:min-w-[200px]">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                ₹{property.rentAmount.toLocaleString('en-IN')}
-                <span className="text-xs font-normal text-slate-500"> /month</span>
-              </div>
+              {isNA('rentAmount') ? (
+                <div className="text-sm font-bold text-amber-600 italic">Rent: Information not available</div>
+              ) : (
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  ₹{property.rentAmount.toLocaleString('en-IN')}
+                  <span className="text-xs font-normal text-slate-500"> /month</span>
+                </div>
+              )}
               <div className="mt-1 text-xs text-slate-500 space-y-0.5">
-                <div>Deposit: ₹{property.depositAmount.toLocaleString('en-IN')}</div>
-                {property.maintenanceAmount > 0 ? (
+                <div>
+                  Deposit: {renderValOrNA('depositAmount', `₹${property.depositAmount.toLocaleString('en-IN')}`)}
+                </div>
+                {isNA('maintenanceAmount') ? (
+                  <div className="text-amber-600 italic">Maintenance: Information not available</div>
+                ) : property.maintenanceAmount > 0 ? (
                   <div>Maintenance: ₹{property.maintenanceAmount.toLocaleString('en-IN')}/mo</div>
                 ) : (
                   <div className="text-emerald-600 font-medium">Zero Maintenance</div>
@@ -307,7 +363,7 @@ export default function ApprovePropertyClient({
                 <span>About this Property</span>
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 whitespace-pre-line leading-relaxed">
-                {property.description}
+                {renderValOrNA('description', property.description)}
               </p>
             </div>
 
@@ -318,39 +374,63 @@ export default function ApprovePropertyClient({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Configuration</div>
-                  <div className="mt-1 font-bold text-slate-800">{property.bhkConfig} ({property.propertyType})</div>
+                  <div className="mt-1 font-bold text-slate-800">
+                    {renderValOrNA('bhkConfig', property.bhkConfig)} ({renderValOrNA('propertyType', property.propertyType)})
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Floor & Area</div>
                   <div className="mt-1 font-bold text-slate-800">
-                    {property.floor !== undefined ? `Floor ${property.floor}` : 'N/A'}
-                    {property.totalFloors ? ` of ${property.totalFloors}` : ''}
-                    {property.areaSqft ? ` · ${property.areaSqft} sqft` : ''}
+                    {isNA('floor') ? (
+                      <span className="text-amber-600 italic">Information not available</span>
+                    ) : (
+                      <>
+                        {property.floor !== undefined ? `Floor ${property.floor}` : 'N/A'}
+                        {property.totalFloors ? ` of ${property.totalFloors}` : ''}
+                      </>
+                    )}
+                    {isNA('areaSqft') ? (
+                      <span className="text-amber-600 italic block">Area: Information not available</span>
+                    ) : property.areaSqft ? (
+                      ` · ${property.areaSqft} sqft`
+                    ) : (
+                      ''
+                    )}
                   </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Tenant Fit</div>
-                  <div className="mt-1 font-bold text-slate-800 uppercase">{property.tenantPreference}</div>
+                  <div className="mt-1 font-bold text-slate-800">
+                    {renderValOrNA('tenantPreference', formatTenantPreference(property.tenantPreference))}
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Min Lease</div>
-                  <div className="mt-1 font-bold text-slate-800">{property.minLeaseMonths || 11} Months</div>
+                  <div className="mt-1 font-bold text-slate-800">
+                    {renderValOrNA('minLeaseMonths', `${property.minLeaseMonths || 11} Months`)}
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Pet Policy</div>
                   <div className="mt-1 font-bold text-slate-800 capitalize">
-                    {property.petPolicy ? property.petPolicy.replace('_', ' ') : 'Case by case'}
+                    {renderValOrNA(
+                      'petPolicy',
+                      property.petPolicy ? property.petPolicy.replace('_', ' ') : 'Case by case'
+                    )}
                   </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <div className="text-slate-400 font-medium">Brokerage</div>
                   <div className="mt-1 font-bold text-slate-800">
-                    {property.brokerageFlag ? `₹${property.brokerageAmount}` : 'No Brokerage'}
+                    {renderValOrNA(
+                      'brokerageAmount',
+                      property.brokerageFlag ? `₹${property.brokerageAmount}` : 'No Brokerage'
+                    )}
                   </div>
                 </div>
               </div>
@@ -364,7 +444,9 @@ export default function ApprovePropertyClient({
                   <Zap className="h-4 w-4 text-amber-500 shrink-0" />
                   <div>
                     <div className="text-slate-400 text-[10px]">Power Backup</div>
-                    <div className="font-bold text-slate-800 capitalize">{property.powerBackup || 'None'}</div>
+                    <div className="font-bold text-slate-800 capitalize">
+                      {renderValOrNA('powerBackup', property.powerBackup || 'None')}
+                    </div>
                   </div>
                 </div>
 
@@ -372,7 +454,9 @@ export default function ApprovePropertyClient({
                   <Droplets className="h-4 w-4 text-sky-500 shrink-0" />
                   <div>
                     <div className="text-slate-400 text-[10px]">Water Supply</div>
-                    <div className="font-bold text-slate-800 capitalize">{property.waterSupplyType || 'Municipal'}</div>
+                    <div className="font-bold text-slate-800 capitalize">
+                      {renderValOrNA('waterSupplyType', property.waterSupplyType || 'Municipal')}
+                    </div>
                   </div>
                 </div>
 
@@ -381,7 +465,10 @@ export default function ApprovePropertyClient({
                   <div>
                     <div className="text-slate-400 text-[10px]">Parking</div>
                     <div className="font-bold text-slate-800 capitalize">
-                      {property.parkingType ? property.parkingType.replace('_', ' ') : 'None'}
+                      {renderValOrNA(
+                        'parkingType',
+                        property.parkingType ? property.parkingType.replace('_', ' ') : 'None'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -391,7 +478,10 @@ export default function ApprovePropertyClient({
                   <div>
                     <div className="text-slate-400 text-[10px]">Fiber Internet</div>
                     <div className="font-bold text-slate-800">
-                      {property.internetReadiness?.fiberAvailable ? 'Ready' : 'Not installed'}
+                      {renderValOrNA(
+                        'internetReadiness',
+                        property.internetReadiness?.fiberAvailable ? 'Ready' : 'Not installed'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -510,19 +600,36 @@ export default function ApprovePropertyClient({
               <span>Update Details First</span>
             </Link>
 
-            {/* Button 3: Make it Live */}
+            {/* Button 3: Make it Live (Guarded by imageUpdateRequired) */}
             <button
               type="button"
               onClick={handleMakeLive}
-              disabled={isPending || isLive}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition disabled:opacity-50 active-press"
+              disabled={isPending || isLive || Boolean(property.imageUpdateRequired)}
+              className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white text-xs font-black shadow-lg transition disabled:opacity-60 active-press ${
+                property.imageUpdateRequired && !isLive
+                  ? 'bg-amber-600 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'
+              }`}
+              title={
+                property.imageUpdateRequired && !isLive
+                  ? 'Image update is required to make it live! Please update photos first.'
+                  : undefined
+              }
             >
               {actionType === 'live' ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : property.imageUpdateRequired && !isLive ? (
+                <AlertTriangle className="h-4 w-4 text-white" />
               ) : (
                 <CheckCircle2 className="h-4 w-4" />
               )}
-              <span>{isLive ? 'Already Live' : 'Make It Live'}</span>
+              <span>
+                {property.imageUpdateRequired && !isLive
+                  ? 'Image Update Required to Make Live'
+                  : isLive
+                  ? 'Already Live'
+                  : 'Make It Live'}
+              </span>
             </button>
           </div>
         </div>

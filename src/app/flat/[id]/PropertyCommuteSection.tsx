@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Navigation, MapPin, Plus, X, Search, Car, Clock } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import { createPoiMapMarkerIcon, detectPoiCategory, getPoiVisualConfig } from "@/lib/poiIcons";
 import { formatIntMetric } from "@/app/search/flats/SearchWizard";
 
@@ -136,7 +136,7 @@ export default function PropertyCommuteSection({
       mapInstanceRef.current = new (window as any).google.maps.Map(mapRef.current, {
         center: propertyLocation,
         zoom: 13,
-        styles: mapStyles,
+        styles: getResponsiveMapStyles(),
         gestureHandling: "greedy",
         disableDefaultUI: false,
         zoomControl: true,
@@ -145,6 +145,18 @@ export default function PropertyCommuteSection({
         fullscreenControl: true,
       });
     }
+
+    // Keep map style responsive on window resize / orientation change (dark on phone view)
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, [isMapsLoaded, propertyLocation]);
 
   // 3. Update Markers and Fit Map Bounds whenever travelSpots change

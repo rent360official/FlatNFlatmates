@@ -96,7 +96,9 @@ export default async function ApprovePropertyPage({
     waterSupplyType: propertyDoc.waterSupplyType,
     internetReadiness: propertyDoc.internetReadiness,
     allowWhatsappContact: propertyDoc.allowWhatsappContact,
+    notAvailableFields: propertyDoc.notAvailableFields || [],
     status: propertyDoc.status || 'pending_owner_approval',
+    imageUpdateRequired: Boolean(propertyDoc.imageUpdateRequired),
     createdAt: propertyDoc.createdAt ? new Date(propertyDoc.createdAt).toISOString() : new Date().toISOString(),
     owner: propertyDoc.ownerId
       ? {

@@ -8,13 +8,15 @@ import {
   Heart, Phone, Mail, CheckCircle2, Loader2, UserCheck
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import { createPoiMapMarkerIcon, getPoiVisualConfig } from "@/lib/poiIcons";
 import { POPULAR_LOCALITIES_DATA, formatIntMetric, ALL_CATEGORIES, getTop4Categories } from "../flats/SearchWizard";
 import { recordPropertyCallAction, recordPropertyWhatsappAction } from "@/app/flat/[id]/actions";
 import { useSession } from "next-auth/react";
 import { getMyListedProperties, UserListedPropertySummary } from "./actions";
 import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
+import SearchableFlatmateTopToggle from "@/components/flatmate/SearchableFlatmateTopToggle";
+import PotentialFlatmateModal from "@/components/flatmate/PotentialFlatmateModal";
 
 function WhatsAppIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -683,7 +685,7 @@ export default function FlatmateSearchWizard({
       disableDefaultUI: true,
       zoomControl: true,
       gestureHandling: 'greedy',
-      styles: mapStyles,
+      styles: getResponsiveMapStyles(),
     });
     mapInstanceRef.current = map;
 
@@ -691,6 +693,17 @@ export default function FlatmateSearchWizard({
       mapInstanceRef.current = null;
     };
   }, [isMapsLoaded, step, searchIntent]);
+
+  // Keep map style responsive on window resize / orientation change (dark on phone view)
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
 
   // Effect to manage commute POI markers with custom themed circle icons in Flatmates
@@ -1606,6 +1619,12 @@ export default function FlatmateSearchWizard({
           <div ref={listingsContainerRef} className={`p-4 lg:p-6 space-y-6 overflow-y-auto lg:h-[calc(100vh-100px)] ${
             searchIntent === "ROOMMATE_WITH_FLAT" ? "w-full lg:w-[60%]" : "w-full"
           }`}>
+            {/* Minimal Toggle on top of flatmates list */}
+            <SearchableFlatmateTopToggle sourcePage="flatmates" />
+
+            {/* Smart Highlighted Popup Modal */}
+            <PotentialFlatmateModal sourcePage="flatmates" hasSeenProperties={seekers.length > 0} />
+
             <div className="flex items-center justify-between gap-3 border-b pb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 font-sans">

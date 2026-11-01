@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       }, { status: 403 });
     }
 
-    // Generate random 6-digit OTP
+    // Generate random OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Create the request

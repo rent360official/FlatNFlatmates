@@ -52,7 +52,7 @@ export default function AdminLayout({
       : []),
     { name: "Cities & Localities", href: "/admin/cities", icon: MapPin },
     { name: "Facebook Groups", href: "/admin/facebook-groups", icon: Share2, roles: ['super_admin', 'ops_admin'] },
-    { name: "Users Management", href: "/admin/users", icon: Users },
+    { name: "Users & Prop Management", href: "/admin/users", icon: Users },
     { name: "Vibe Upgrade Requests", href: "/admin/vibe-requests", icon: Sparkles },
     { name: "Audit Logs", href: "/admin/audit-logs", icon: ListCollapse },
     { name: "Feature Management", href: "/admin/features", icon: Layers },

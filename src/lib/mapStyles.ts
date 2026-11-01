@@ -1,33 +1,38 @@
-export const mapStyles = [
+export const lightMapStyles = [
   {
     featureType: "all",
     elementType: "geometry",
-    stylers: [{ color: "#f5f5f5" }]
+    stylers: [{ color: "#eaeff2" }]
   },
   {
     featureType: "all",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#616161" }]
+    stylers: [{ color: "#334155" }]
   },
   {
     featureType: "all",
     elementType: "labels.text.stroke",
-    stylers: [{ color: "#f5f5f5" }]
+    stylers: [{ color: "#ffffff" }, { weight: 2 }]
   },
   {
     featureType: "administrative",
     elementType: "geometry",
-    stylers: [{ color: "#e0e0e0" }]
+    stylers: [{ color: "#cbd5e1" }]
   },
   {
     featureType: "administrative.country",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#9e9e9e" }]
+    stylers: [{ color: "#64748b" }]
+  },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#0f172a" }, { weight: "bold" }]
   },
   {
     featureType: "poi",
     elementType: "geometry",
-    stylers: [{ color: "#eeeeee" }]
+    stylers: [{ color: "#e2e8f0" }]
   },
   {
     featureType: "poi",
@@ -35,89 +40,107 @@ export const mapStyles = [
     stylers: [{ visibility: "off" }]
   },
   {
-    // Hide tourist attractions (temples, dam walls, resorts, historical parks)
     featureType: "poi.attraction",
     elementType: "all",
     stylers: [{ visibility: "off" }]
   },
   {
-    // Hide businesses (shops, hotels)
     featureType: "poi.business",
     elementType: "all",
     stylers: [{ visibility: "off" }]
   },
   {
-    // Hide place of worship (temples, churches)
     featureType: "poi.place_of_worship",
     elementType: "all",
     stylers: [{ visibility: "off" }]
   },
   {
-    // Hide government offices
     featureType: "poi.government",
     elementType: "all",
     stylers: [{ visibility: "off" }]
   },
   {
-    // Keep medical/hospitals visible
     featureType: "poi.medical",
     elementType: "all",
     stylers: [{ visibility: "on" }]
   },
   {
-    // Keep parks visible
     featureType: "poi.park",
     elementType: "geometry",
-    stylers: [{ color: "#e5e5e5" }]
+    stylers: [{ color: "#cfe8d5" }]
   },
   {
     featureType: "poi.park",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#9e9e9e" }]
+    stylers: [{ color: "#166534" }]
   },
   {
-    // Keep schools/colleges visible
     featureType: "poi.school",
     elementType: "all",
     stylers: [{ visibility: "on" }]
   },
   {
-    // Mute/neutral roads
     featureType: "road",
     elementType: "geometry",
     stylers: [{ color: "#ffffff" }]
   },
   {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#cbd5e1" }]
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#475569" }]
+  },
+  {
     featureType: "road.highway",
     elementType: "geometry",
-    stylers: [{ color: "#e3e3e3" }]
+    stylers: [{ color: "#fed7aa" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#fdba74" }]
   },
   {
     featureType: "road.highway",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#616161" }]
+    stylers: [{ color: "#7c2d12" }]
   },
   {
-    // Mute transit overall
     featureType: "transit",
     elementType: "all",
     stylers: [{ visibility: "off" }]
   },
   {
-    // Keep transit stations visible
     featureType: "transit.station",
     elementType: "all",
     stylers: [{ visibility: "on" }]
   },
   {
-    // Water bodies - soft muted blue
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#cbdff2" }]
+    stylers: [{ color: "#9ec5e8" }]
   },
   {
     featureType: "water",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#9e9e9e" }]
+    stylers: [{ color: "#475569" }]
   }
 ];
+
+export const darkMapStyles = lightMapStyles;
+
+export const isPhoneView = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth < 768 || window.matchMedia("(max-width: 767px)").matches;
+};
+
+export const getResponsiveMapStyles = (): any[] => {
+  return lightMapStyles;
+};
+
+// Default export alias for backwards compatibility
+export const mapStyles = lightMapStyles;

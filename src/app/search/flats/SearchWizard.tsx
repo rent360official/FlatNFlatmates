@@ -8,11 +8,13 @@ import {
   Heart, Phone, Mail, CheckCircle2, Loader2, UserCheck, Edit3
 } from "lucide-react";
 import { useGoogleMapsLoaded } from "@/lib/useGoogleMapsLoaded";
-import { mapStyles } from "@/lib/mapStyles";
+import { mapStyles, getResponsiveMapStyles } from "@/lib/mapStyles";
 import { colors } from "@/theme/colors";
 import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
 import { recordPropertyCallAction, recordPropertyWhatsappAction } from "@/app/flat/[id]/actions";
 import { useSession } from "next-auth/react";
+import SearchableFlatmateTopToggle from "@/components/flatmate/SearchableFlatmateTopToggle";
+import PotentialFlatmateModal from "@/components/flatmate/PotentialFlatmateModal";
 
 // WhatsApp brand SVG icon
 function WhatsAppIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -855,7 +857,7 @@ export default function SearchWizard({
         zoom: searchArea || poisList.length > 0 ? 13 : 12,
         gestureHandling: "greedy",
         scrollwheel: true,
-        styles: mapStyles,
+        styles: getResponsiveMapStyles(),
         restriction: {
           latLngBounds: puneBounds,
           strictBounds: false,
@@ -868,6 +870,17 @@ export default function SearchWizard({
       mapInstanceRef.current = map;
     }
   }, [isMapsLoaded, step, searchArea, poisList]);
+
+  // Keep map style responsive on window resize / orientation change (dark on phone view)
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ styles: getResponsiveMapStyles() });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Manage property markers reactively
   useEffect(() => {
@@ -1675,6 +1688,12 @@ export default function SearchWizard({
 
           {/* Listings Column */}
           <div ref={listingsContainerRef} className="w-full lg:w-[60%] p-4 lg:p-6 space-y-6 overflow-y-auto lg:h-[calc(100vh-100px)]">
+            {/* Minimal Toggle on top of listings */}
+            <SearchableFlatmateTopToggle sourcePage="flats" />
+
+            {/* Smart Highlighted Popup Modal */}
+            <PotentialFlatmateModal sourcePage="flats" hasSeenProperties={properties.length > 0} />
+
             <div className="flex items-center justify-between gap-3 border-b pb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
