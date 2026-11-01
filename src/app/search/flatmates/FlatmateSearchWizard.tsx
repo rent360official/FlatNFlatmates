@@ -15,6 +15,8 @@ import { recordPropertyCallAction, recordPropertyWhatsappAction } from "@/app/fl
 import { useSession } from "next-auth/react";
 import { getMyListedProperties, UserListedPropertySummary } from "./actions";
 import FacebookGroupCTA, { FacebookGroupData } from "@/components/FacebookGroupCTA";
+import SearchableFlatmateTopToggle from "@/components/flatmate/SearchableFlatmateTopToggle";
+import PotentialFlatmateModal from "@/components/flatmate/PotentialFlatmateModal";
 
 function WhatsAppIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -1617,6 +1619,12 @@ export default function FlatmateSearchWizard({
           <div ref={listingsContainerRef} className={`p-4 lg:p-6 space-y-6 overflow-y-auto lg:h-[calc(100vh-100px)] ${
             searchIntent === "ROOMMATE_WITH_FLAT" ? "w-full lg:w-[60%]" : "w-full"
           }`}>
+            {/* Minimal Toggle on top of flatmates list */}
+            <SearchableFlatmateTopToggle sourcePage="flatmates" />
+
+            {/* Smart Highlighted Popup Modal */}
+            <PotentialFlatmateModal sourcePage="flatmates" hasSeenProperties={seekers.length > 0} />
+
             <div className="flex items-center justify-between gap-3 border-b pb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 font-sans">

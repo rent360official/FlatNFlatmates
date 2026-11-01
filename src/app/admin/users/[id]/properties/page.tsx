@@ -159,7 +159,7 @@ export default async function AdminUserPropertiesPage({
             href="/admin/users"
             className="font-semibold text-slate-500 hover:text-brand-primary hover:underline"
           >
-            Users Management
+            Users & Prop Management
           </Link>
           <span className="text-slate-300">/</span>
           <Link

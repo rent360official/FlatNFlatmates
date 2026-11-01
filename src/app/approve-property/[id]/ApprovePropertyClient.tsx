@@ -25,6 +25,7 @@ import {
   ArrowRight,
   ExternalLink,
   Info,
+  AlertTriangle,
 } from 'lucide-react';
 import { ownerMakePropertyLive, ownerRejectProperty } from './actions';
 import { formatTenantPreference } from '@/lib/utils';
@@ -67,6 +68,7 @@ interface PropertyData {
   allowWhatsappContact?: boolean;
   notAvailableFields?: string[];
   status: string;
+  imageUpdateRequired?: boolean;
   createdAt: string;
   owner: {
     _id: string;
@@ -229,6 +231,39 @@ export default function ApprovePropertyClient({
         {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-800">
             {error}
+          </div>
+        )}
+
+        {/* Image Update Required Banner (Requirement 2) */}
+        {property.imageUpdateRequired && isPendingApproval && (
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-5 sm:p-6 text-amber-950 shadow-md space-y-3 animate-in fade-in slide-in-from-top-3">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 border border-amber-300">
+                    Action Required
+                  </span>
+                  <h2 className="text-base sm:text-lg font-black text-amber-950">
+                    Image update is required to make it live!
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+                  Our quality check team requires updated photos of the property before this listing can be activated and shown to prospective tenants. Please click <strong>Update Details First</strong> below to upload new photos, or contact support once ready.
+                </p>
+              </div>
+            </div>
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              <Link
+                href={`/list-property?edit=${property._id}&approveOnSave=true`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-700 transition shadow-sm"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                <span>Upload Images / Edit Property</span>
+              </Link>
+            </div>
           </div>
         )}
 
@@ -565,19 +600,36 @@ export default function ApprovePropertyClient({
               <span>Update Details First</span>
             </Link>
 
-            {/* Button 3: Make it Live */}
+            {/* Button 3: Make it Live (Guarded by imageUpdateRequired) */}
             <button
               type="button"
               onClick={handleMakeLive}
-              disabled={isPending || isLive}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition disabled:opacity-50 active-press"
+              disabled={isPending || isLive || Boolean(property.imageUpdateRequired)}
+              className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white text-xs font-black shadow-lg transition disabled:opacity-60 active-press ${
+                property.imageUpdateRequired && !isLive
+                  ? 'bg-amber-600 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'
+              }`}
+              title={
+                property.imageUpdateRequired && !isLive
+                  ? 'Image update is required to make it live! Please update photos first.'
+                  : undefined
+              }
             >
               {actionType === 'live' ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : property.imageUpdateRequired && !isLive ? (
+                <AlertTriangle className="h-4 w-4 text-white" />
               ) : (
                 <CheckCircle2 className="h-4 w-4" />
               )}
-              <span>{isLive ? 'Already Live' : 'Make It Live'}</span>
+              <span>
+                {property.imageUpdateRequired && !isLive
+                  ? 'Image Update Required to Make Live'
+                  : isLive
+                  ? 'Already Live'
+                  : 'Make It Live'}
+              </span>
             </button>
           </div>
         </div>

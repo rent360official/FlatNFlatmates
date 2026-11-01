@@ -84,3 +84,34 @@ export async function adminRejectProperty(propertyId: string) {
     return { error: getFriendlyErrorMessage(error, "Failed to reject property") };
   }
 }
+
+export async function adminToggleImageUpdateRequired(propertyId: string, imageUpdateRequired: boolean) {
+  try {
+    const actor = await getAdminActor(true);
+    await dbConnect();
+
+    const property = await Property.findById(propertyId);
+    if (!property) throw new Error("Property not found");
+
+    const previousFlag = Boolean(property.imageUpdateRequired);
+    property.imageUpdateRequired = imageUpdateRequired;
+    await property.save();
+
+    await logAdminAction({
+      actorId: actor.id,
+      action: "PROPERTY_IMAGE_UPDATE_REQUIRED_TOGGLE",
+      entityType: "Property",
+      entityId: property._id.toString(),
+      beforeState: { imageUpdateRequired: previousFlag },
+      afterState: { imageUpdateRequired, propertyTitle: property.title },
+    });
+
+    revalidatePath("/admin/pending-approvals");
+    revalidatePath(`/approve-property/${propertyId}`);
+    revalidatePath(`/approve-all-property/${property.ownerId}`);
+    return { success: true, imageUpdateRequired };
+  } catch (error: any) {
+    return { error: getFriendlyErrorMessage(error, "Failed to update image requirement status") };
+  }
+}
+

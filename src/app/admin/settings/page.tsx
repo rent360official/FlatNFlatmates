@@ -2,7 +2,12 @@ import dbConnect from "@/lib/db";
 import FeatureFlag from "@/models/FeatureFlag";
 import { createFeatureFlag, updateMediaLimitsConfig } from "./actions";
 import { getMediaUploadConfig } from "@/lib/mediaConfig";
+import {
+  getPropertyApprovalMessageTemplate,
+  getBulkPropertyApprovalMessageTemplate,
+} from "@/lib/propertyApprovalConfig.server";
 import FlagToggle from "./FlagToggle";
+import MessageTemplateConfigCard from "./MessageTemplateConfigCard";
 import { Settings, Plus, Film, Image as ImageIcon, Save, ShieldCheck } from "lucide-react";
 import React from "react";
 
@@ -13,6 +18,8 @@ export default async function SettingsAdminPage() {
   
   const flags = await FeatureFlag.find({ category: 'system_config' }).sort({ key: 1 }).lean();
   const mediaConfig = await getMediaUploadConfig();
+  const messageTemplate = await getPropertyApprovalMessageTemplate();
+  const bulkMessageTemplate = await getBulkPropertyApprovalMessageTemplate();
 
   return (
     <div className="space-y-8">
@@ -144,6 +151,12 @@ export default async function SettingsAdminPage() {
           </div>
         </form>
       </div>
+
+      {/* Owner Verification / Magic Link WhatsApp & SMS Template Config */}
+      <MessageTemplateConfigCard
+        initialTemplate={messageTemplate}
+        initialBulkTemplate={bulkMessageTemplate}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         

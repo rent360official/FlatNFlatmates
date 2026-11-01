@@ -15,6 +15,10 @@ export async function ownerMakePropertyLive(propertyId: string) {
       throw new Error("Property listing not found");
     }
 
+    if (property.imageUpdateRequired) {
+      throw new Error("Image update is required to make this property live. Please update photos first or contact support.");
+    }
+
     property.status = 'active';
     await property.save();
 

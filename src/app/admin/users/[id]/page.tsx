@@ -81,7 +81,7 @@ export default async function AdminUserDetailPage({
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-brand-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Users Management</span>
+          <span>Back to Users & Prop Management</span>
         </Link>
 
         {/* View Properties & Analytics Button */}

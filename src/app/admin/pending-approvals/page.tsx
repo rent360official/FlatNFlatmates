@@ -4,6 +4,10 @@ import User from "@/models/User";
 import City from "@/models/City";
 import Locality from "@/models/Locality";
 import PendingApprovalsList from "./PendingApprovalsList";
+import {
+  getPropertyApprovalMessageTemplate,
+  getBulkPropertyApprovalMessageTemplate,
+} from "@/lib/propertyApprovalConfig.server";
 import React from "react";
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +43,7 @@ export default async function PendingApprovalsPage() {
       isCover: img.isCover,
     })),
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    imageUpdateRequired: Boolean(p.imageUpdateRequired),
     owner: p.ownerId
       ? {
           _id: p.ownerId._id.toString(),
@@ -50,6 +55,9 @@ export default async function PendingApprovalsPage() {
       : null,
   }));
 
+  const messageTemplate = await getPropertyApprovalMessageTemplate();
+  const bulkMessageTemplate = await getBulkPropertyApprovalMessageTemplate();
+
   const appBaseUrl =
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -60,7 +68,10 @@ export default async function PendingApprovalsPage() {
       <PendingApprovalsList
         initialProperties={serializedProperties}
         appBaseUrl={appBaseUrl}
+        messageTemplate={messageTemplate}
+        bulkMessageTemplate={bulkMessageTemplate}
       />
     </div>
   );
 }
+

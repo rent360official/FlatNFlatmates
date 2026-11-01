@@ -119,6 +119,9 @@ export interface IProperty extends Document {
   // --- Unavailable / Hidden Info Flags ---
   notAvailableFields?: string[];
 
+  // --- Admin Approval & Quality Flags ---
+  imageUpdateRequired?: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -288,6 +291,9 @@ const PropertySchema: Schema<IProperty> = new Schema(
 
     // --- Unavailable / Hidden Info Flags ---
     notAvailableFields: { type: [String], default: [] },
+
+    // --- Admin Approval & Quality Flags ---
+    imageUpdateRequired: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
